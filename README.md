@@ -3,3 +3,6 @@
 Postgresql version 14, running on port 5432
 
 Python version ?
+
+Python libraries:
+psycopg2
