@@ -1,8 +1,11 @@
+# these should be in project.py
+# but keep this here for easier testing
 import psycopg2
+from annotation import Annotator
 username = "postgres"
 password = "admin"
 host = "localhost"
-database = "TPC-H"
+database = "cz4031" # "TPC-H"
 
 conn = psycopg2.connect(
     dbname=database,
@@ -12,11 +15,32 @@ conn = psycopg2.connect(
 )
 
 cur = conn.cursor()
-query = "SELECT * FROM nation"
+query = "explain (format json) insert into region values (5, 'Singapore', 'little comment')"
+# query = "EXPLAIN (FORMAT JSON) INSERT INTO region VALUES (5, 'SINGAPORE', 'little comment')"
 cur.execute(query)
 rows = cur.fetchall()
 for row in rows:
     print (row)
-#cur.execute(cur.mogrify('explain analyze ' + query, vals))
-#analyze_fetched = cur.fetchall()
-#print(analyze_fetched)
+
+
+# actual preprocessing stuff:
+class QueryProcessor:
+
+    def __init__(self, username, password, host, database):
+        # self.username = username
+        # self.password = password
+        # self.host = host
+        # self.database = database
+        conn = psycopg2.connect(
+            dbname=database,
+            user=username,
+            host=host,
+            password=password
+        )
+
+        self.cur = conn.cursor()
+
+    def process_query(self, query):
+        self.cur.execute("EXPLAIN (FORMAT JSON) " + query)
+        query_plan = self.cur.fetchall()[0]
+        self.annotator.annotate(query_plan)
