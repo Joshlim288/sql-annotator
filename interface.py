@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt5.uic import loadUi
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QDialog, QApplication
+from PyQt5.QtWidgets import QDialog, QApplication,QTextEdit
 
 
 class WelcomeScreen(QDialog):
@@ -24,25 +24,54 @@ class QueryScreen(QDialog):
     def __init__(self):
         super(QueryScreen, self).__init__()
         loadUi(os.path.join(os.path.dirname(__file__), 'QueryScreen.ui'), self)
-        self.submitButton.clicked.connect(self.goToQEPScreen)
+        self.submitButton.clicked.connect(self.clickSubmit)
         self.backButton.clicked.connect(self.goToWelcomeScreen)
+
+    def clickSubmit(self):
+        # pass the text
+        self.text = self.queryInput.toPlainText()
+
+        # go to next screen
+        self.goToQEPScreen()
 
     def goToWelcomeScreen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
 
     def goToQEPScreen(self):
-        qepScreen = QEPScreen()
+        qepScreen = QEPScreen(self.text)
         widgetStack.addWidget(qepScreen)
         widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
 
 class QEPScreen(QDialog):
-    def __init__(self):
+    def __init__(self, query: str):
         super(QEPScreen, self).__init__()
+
+        # the query input from Query Screen
+        self.query = query
+
         loadUi(os.path.join(os.path.dirname(__file__), 'QEPScreen.ui'),self)
+
+        # display the annotation
+        self.displayAnnotation(self.query)
         self.backButton.clicked.connect(self.goToQueryScreen)
 
     def goToQueryScreen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
+
+    def displayAnnotation(self, query: str):
+        """ display the annotation to the query """
+
+        if self.isAnnotationValid(query):
+            self.titleText.setText(query)
+        else:
+            self.titleText.setText("The query is invalid, please try again")
+
+    def isAnnotationValid(self, query: str) -> bool:
+        """decide whether a query is valid or not"""
+
+        # for now the placeholder value is true
+        return True
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
