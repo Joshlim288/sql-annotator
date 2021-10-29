@@ -13,9 +13,10 @@ conn = psycopg2.connect(
 
 cur = conn.cursor()
 # query = "insert into region values (5, 'Singapore', 'little comment')"
-query = "EXPLAIN (FORMAT JSON) INSERT INTO region VALUES (5, 'SINGAPORE', 'little comment')"
+query = "EXPLAIN INSERT INTO region VALUES (5, 'SINGAPORE', 'little comment')"
 cur.execute(query)
 rows = cur.fetchall()
+print(rows)
 for row in rows:
     print (row)
 # cur.execute(cur.mogrify('explain analyze ' + query, vals))
