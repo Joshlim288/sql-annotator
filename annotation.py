@@ -1,3 +1,4 @@
+import re
 class Annotator:
 
     def __init__(self):
@@ -26,16 +27,18 @@ class Annotator:
             "Custom Scan": self.custom_scan,
         }
         self.other_operators = {}
+        with open('postgresql_keywords.txt') as f: # get all postgresql reserved keywords
+            self.sql_keywords = f.read().splitlines()
+        
 
-    def annotate(self, query_plan):
+    def annotate(self, query_plan, tokenized_query):
         self.scans_dict = {}
         self.joins_arr = []
+        self.annotations_dict = {}
 
         self.add_annotations(query_plan)
-        print("Scans:")
-        print(self.scans_dict)
-        print("Joins:")
-        print(self.joins_arr)
+        self.attach_annotations(tokenized_query)
+        return self.annotations_dict
 
     def add_annotations(self, query_plan):
         """
@@ -65,22 +68,57 @@ class Annotator:
                 continue
 
             annotator(curr_plan)
+        
+    def attach_annotations(self, tokenized_query):
+        """
+        Attaches the annotations for joins to their respective FROM clauses
+        """
+        self.annotations_dict = {}
+        from_clause_flag = False
+        table_counter = 0
+        from_clause_index = 0
+        i = 0
+        while(i<len(tokenized_query)):
+            token = tokenized_query[i]
+            if (from_clause_flag): # inside a FROM clause
+                if (token.upper() in self.sql_keywords): # Finish annotation for the FROM clause
+                    from_clause_flag = False
+                    table_counter = 0
+                    if (from_clause_index in self.annotations_dict.keys()):
+                        self.annotations_dict[from_clause_index] = "This join is carried out with a " + self.annotations_dict[from_clause_index] + "."
+
+                elif token in self.scans_dict.keys(): # attach scans to the index of their alias names within FROM clause
+                    self.annotations_dict[i] = self.scans_dict[token]
+                    if (table_counter == 1):
+                        self.annotations_dict[from_clause_index] = self.joins_arr.pop(0)
+                    elif (table_counter > 1): # children join is conducted first
+                        self.annotations_dict[from_clause_index] = self.joins_arr.pop(0) + ", followed by a " + self.annotations_dict[from_clause_index]
+                    table_counter += 1
+
+            if (token.upper() == "FROM"):
+                from_clause_flag = True
+                from_clause_index = i
+                #if (len(self.joins_arr) > 0):
+                #self.annotations_dict[i] = ""
+
+            i += 1
+
 
     """ Methods to handle each node type """
     def nested_loop(self, plan):
         """
         Each nested loop node type has an array Plans of size 2.
         """
-        self.joins_arr.append("This join is performed using a Nested Loop")
+        self.joins_arr.append("Nested Loop Join")
 
     def hash_join(self, plan):
-        self.joins_arr.append("This join is performed using a Hash Join")
+        self.joins_arr.append("Hash Join")
 
     def merge_join(self, plan):
-        self.joins_arr.append("This join is performed using a Merge Join")
+        self.joins_arr.append("Merge Join")
 
     def seq_scan(self, plan):
-        annotation = "This table is read using a sequential scan."
+        annotation = "The table \""+ plan["Relation Name"] + "\" is read using a sequential scan."
         if "Filter" in plan:
             annotation += f" The filter {plan['Filter'][1:-1]} is applied."
         self.scans_dict[plan["Alias"]] = annotation
@@ -95,7 +133,7 @@ class Annotator:
         #     annotation += f". This is the {plan['Parent Relationship']} table in the parent join"
 
     def index_scan(self, plan):
-        annotation = "This table is read using an index scan."
+        annotation = "The table \""+ plan["Relation Name"] + "\" is read using an index scan."
         if "Index Cond" in plan:
             annotation += f" The index condition is {plan['Index Cond'][1:-1]}."
         self.scans_dict[plan["Alias"]] = annotation
