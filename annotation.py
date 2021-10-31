@@ -27,8 +27,12 @@ class Annotator:
             "Custom Scan": self.custom_scan,
         }
         self.other_operators = {}
+        '''
         with open('postgresql_keywords.txt') as f: # get all postgresql reserved keywords
             self.sql_keywords = f.read().splitlines()
+        '''
+        self.sql_keywords = ["FROM", "SELECT", "ORDER BY", "GROUP BY"]
+        
         
 
     def annotate(self, query_plan, tokenized_query):
@@ -74,32 +78,30 @@ class Annotator:
         Attaches the annotations for joins to their respective FROM clauses
         """
         self.annotations_dict = {}
-        from_clause_flag = False
+        current_clause = tokenized_query[0].upper()
         table_counter = 0
-        from_clause_index = 0
+        clause_index = 0
         i = 0
         while(i<len(tokenized_query)):
             token = tokenized_query[i]
-            if (from_clause_flag): # inside a FROM clause
+            if (current_clause == "FROM"): # inside a FROM clause
                 if (token.upper() in self.sql_keywords): # Finish annotation for the FROM clause
-                    from_clause_flag = False
+                    current_clause = token.upper()
                     table_counter = 0
-                    if (from_clause_index in self.annotations_dict.keys()):
-                        self.annotations_dict[from_clause_index] = "This join is carried out with a " + self.annotations_dict[from_clause_index] + "."
+                    if (clause_index in self.annotations_dict.keys()):
+                        self.annotations_dict[clause_index] = "This join is carried out with a " + self.annotations_dict[clause_index] + "."
 
                 elif token in self.scans_dict.keys(): # attach scans to the index of their alias names within FROM clause
                     self.annotations_dict[i] = self.scans_dict[token]
                     if (table_counter == 1):
-                        self.annotations_dict[from_clause_index] = self.joins_arr.pop(0)
+                        self.annotations_dict[clause_index] = self.joins_arr.pop(0)
                     elif (table_counter > 1): # children join is conducted first
-                        self.annotations_dict[from_clause_index] = self.joins_arr.pop(0) + ", followed by a " + self.annotations_dict[from_clause_index]
+                        self.annotations_dict[clause_index] = self.joins_arr.pop(0) + ", followed by a " + self.annotations_dict[clause_index]
                     table_counter += 1
 
-            if (token.upper() == "FROM"):
-                from_clause_flag = True
-                from_clause_index = i
-                #if (len(self.joins_arr) > 0):
-                #self.annotations_dict[i] = ""
+            if (token.upper() in self.sql_keywords):
+                current_clause = token.upper()
+                clause_index = i
 
             i += 1
 

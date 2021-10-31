@@ -16,16 +16,16 @@ def get_annotated_query(query):
         annotation_dict = annotator.annotate(query_plan, tokenized_query)
         return annotation_dict, tokenized_query
     except Exception as e:
-        print(e)
+        return e
 
 # Input variables we need from the interface
 username = "postgres"
 password = "admin"
 host = "localhost"
 database = "TPC-H"
-# q1 = "SELECT * FROM customer, nation , supplier WHERE nation.n_nationkey = 0"
+q1 = "SELECT * FROM customer, nation, supplier WHERE nation.n_nationkey = 0"
 # q1 = "INSERT INTO region VALUES (5, 'SINGAPORE', 'little comment')"
-q1 = "select * from customer c, orders o where c.c_custkey = o.o_custkey"
+# q1 = "select * from customer c, orders o where c.c_custkey = o.o_custkey"
 # q1 = "select * from customer c where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 )"
 
 processor = QueryProcessor(username, password, host, database)
