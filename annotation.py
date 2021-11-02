@@ -107,6 +107,7 @@ class Annotator:
 
 
     """ Methods to handle each node type """
+    """ Joins """
     def nested_loop(self, plan):
         """
         Each nested loop node type has an array Plans of size 2.
@@ -119,135 +120,213 @@ class Annotator:
     def merge_join(self, plan):
         self.joins_arr.append("Merge Join")
 
+    """ Scans """
+    def __get_alias(self, plan):  # helper method to return alias of a table, if it exists
+        alias = ""
+        if plan["Alias"] != plan["Relation Name"]:
+            alias = f" (alias \"{plan['Alias']}\")"
+
+        return alias
+
     def seq_scan(self, plan):
-        annotation = "The table \""+ plan["Relation Name"] + "\" is read using a sequential scan."
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Sequential Scan."
         if "Filter" in plan:
             annotation += f" The filter {plan['Filter'][1:-1]} is applied."
         self.scans_dict[plan["Alias"]] = annotation
-        # alias = ""
-        # if plan["Alias"] != plan["Relation Name"]:
-        #     alias = f" ({plan['Alias']})"
-        #
-        # annotation = f"Table {plan['Relation Name']}{alias} is read using a sequential scan"
-        # if "Filter" in plan:
-        #     annotation += f" with selection '{plan['Filter'][1:-1]}'"
-        # if "Parent Relationship" in plan:
-        #     annotation += f". This is the {plan['Parent Relationship']} table in the parent join"
 
     def index_scan(self, plan):
-        annotation = "The table \""+ plan["Relation Name"] + "\" is read using an index scan."
+        alias = self.__get_alias(plan)
+        
+        annotation = "The table \""+ plan["Relation Name"] + "\" is read using an Index Scan."
         if "Index Cond" in plan:
             annotation += f" The index condition is {plan['Index Cond'][1:-1]}."
         self.scans_dict[plan["Alias"]] = annotation
+
+    def index_only_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = "The table \""+ plan["Relation Name"] + "\" is read using an Index Only Scan."
+        if "Index Cond" in plan:
+            annotation += f" The index condition is {plan['Index Cond'][1:-1]}."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def bitmap_index_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = "The table \""+ plan["Relation Name"] + "\" is read using a Bitmap Index Scan."
+        if "Index Cond" in plan:
+            annotation += f" The index condition is {plan['Index Cond'][1:-1]}."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def bitmap_heap_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Bitmap Heap Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def sample_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Sample Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def tid_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Tid Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def tid_range_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Tid Range Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def subquery_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Subquery Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def function_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Function Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def table_function_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Table Function Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def values_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Values Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def cte_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a CTE Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def named_tuplestore_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Named Tuplestore Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def worktable_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Worktable Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def foreign_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Foreign Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    def custom_scan(self, plan):
+        alias = self.__get_alias(plan)
+        
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Custom Scan."
+        if "Filter" in plan:
+            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+        self.scans_dict[plan["Alias"]] = annotation
+
+    """ Other Nodes """
+    def result(self, plan):
         pass
 
-    def index_only_scan(self):
+    def project_set(self, plan):
         pass
 
-    def bitmap_index_scan(self):
+    def modify_table(self, plan):
         pass
 
-    def bitmap_heap_scan(self):
+    def append(self, plan):
         pass
 
-    def sample_scan(self):
+    def merge_append(self, plan):
         pass
 
-    def tid_scan(self):
+    def recursive_union(self, plan):
         pass
 
-    def tid_range_scan(self):
+    def bitmap_and(self, plan):
         pass
 
-    def subquery_scan(self):
+    def bitmap_or(self, plan):
         pass
 
-    def function_scan(self):
+    def gather(self, plan):
         pass
 
-    def table_function_scan(self):
+    def gather_merge(self, plan):
         pass
 
-    def values_scan(self):
+    def materialize(self, plan):
         pass
 
-    def cte_scan(self):
+    def memoize(self, plan):
         pass
 
-    def named_tuplestore_scan(self):
+    def sort(self, plan):
         pass
 
-    def worktable_scan(self):
+    def incremental_sort(self, plan):
         pass
 
-    def foreign_scan(self):
+    def group(self, plan):
         pass
 
-    def custom_scan(self):
+    def aggregate(self, plan):
         pass
 
-    def result(self):
+    def window_agg(self, plan):
         pass
 
-    def project_set(self):
+    def unique(self, plan):
         pass
 
-    def modify_table(self):
+    def set_op(self, plan):
         pass
 
-    def append(self):
+    def lock_rows(self, plan):
         pass
 
-    def merge_append(self):
+    def limit(self, plan):
         pass
 
-    def recursive_union(self):
-        pass
-
-    def bitmap_and(self):
-        pass
-
-    def bitmap_or(self):
-        pass
-
-    def gather(self):
-        pass
-
-    def gather_merge(self):
-        pass
-
-    def materialize(self):
-        pass
-
-    def memoize(self):
-        pass
-
-    def sort(self):
-        pass
-
-    def incremental_sort(self):
-        pass
-
-    def group(self):
-        pass
-
-    def aggregate(self):
-        pass
-
-    def window_agg(self):
-        pass
-
-    def unique(self):
-        pass
-
-    def set_op(self):
-        pass
-
-    def lock_rows(self):
-        pass
-
-    def limit(self):
-        pass
-
-    def hash(self):
+    def hash(self, plan):
         pass
