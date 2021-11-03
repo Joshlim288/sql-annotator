@@ -26,18 +26,24 @@ class Annotator:
             "Foreign Scan": self.foreign_scan,
             "Custom Scan": self.custom_scan,
         }
-        self.other_operators = {}
+        self.other_operators = {
+            "Sort": self.sort,
+            "Incremental Sort": self.incremental_sort,
+            "Aggregate": self.aggregate,
+        }
         '''
         with open('postgresql_keywords.txt') as f: # get all postgresql reserved keywords
             self.sql_keywords = f.read().splitlines()
         '''
-        self.sql_keywords = ["FROM", "SELECT", "ORDER BY", "GROUP BY"]
-        
+        self.sql_keywords = ["FROM", "SELECT", "ORDER", "GROUP"]
+        self.aggregates = ("AVG", "COUNT", "MAX", "MIN", "SUM")
         
 
     def annotate(self, query_plan, tokenized_query):
         self.scans_dict = {}
         self.joins_arr = []
+        self.aggregates_arr = []
+        self.sorts_arr = []
         self.annotations_dict = {}
 
         self.add_annotations(query_plan)
@@ -82,22 +88,44 @@ class Annotator:
         table_counter = 0
         clause_index = 0
         i = 0
-        while(i<len(tokenized_query)):
+        while i < len(tokenized_query):
             token = tokenized_query[i]
-            if (current_clause == "FROM"): # inside a FROM clause
-                if (token.upper() in self.sql_keywords): # Finish annotation for the FROM clause
+            if current_clause == "FROM": # inside a FROM clause
+                if token.upper() in self.sql_keywords: # Finish annotation for the FROM clause
                     current_clause = token.upper()
                     table_counter = 0
-                    if (clause_index in self.annotations_dict.keys()):
+                    if clause_index in self.annotations_dict.keys():
                         self.annotations_dict[clause_index] = "This join is carried out with a " + self.annotations_dict[clause_index] + "."
 
                 elif token in self.scans_dict.keys(): # attach scans to the index of their alias names within FROM clause
                     self.annotations_dict[i] = self.scans_dict[token]
-                    if (table_counter == 1):
+                    if table_counter == 1:
                         self.annotations_dict[clause_index] = self.joins_arr.pop(0)
-                    elif (table_counter > 1): # children join is conducted first
+                    elif table_counter > 1: # children join is conducted first
                         self.annotations_dict[clause_index] = self.joins_arr.pop(0) + ", followed by a " + self.annotations_dict[clause_index]
                     table_counter += 1
+
+            elif current_clause == "SELECT":  # attach aggregate annotations
+                if token.upper() in self.sql_keywords: # Finish annotation for the SELECT clause
+                    current_clause = token.upper()
+                    for j in range(clause_index, i):  
+                        # check if tokens from the SELECT clause to this current token are aggregate functions
+                        # if so, attach them
+                        if tokenized_query[j].upper().startswith(self.aggregates):
+                            self.annotations_dict[j] = self.aggregates_arr.pop(0)
+
+            elif current_clause == "GROUP" or current_clause == "ORDER":  # attach sort annotations
+                # group by has priority over order by - so if both appear together, order by may not have any sorts to attach to
+                # group by may also appear without requiring any sorting to be performed
+                if (token.upper() in self.sql_keywords or i == len(tokenized_query)-1) and len(self.sorts_arr) != 0: # Finish annotation for the GROUP BY clause
+                    # need to make sure still can attach annotation to group by if it's the last clause
+                    self.annotations_dict[clause_index] = self.sorts_arr.pop(0)
+            
+            # elif current_clause == "ORDER":  # attach order by annotations
+            #     if (token.upper() in self.sql_keywords or i == len(tokenized_query)-1) and len(self.sorts_arr) != 0: # Finish annotation for the GROUP BY clause
+            #         # need to make sure still can attach annotation to group by if it's the last clause
+            #         # group by has priority over order by - so if both appear together, order by may not have any sorts to attach to
+            #         self.annotations_dict[clause_index] = self.sorts_arr.pop(0)
 
             if (token.upper() in self.sql_keywords):
                 current_clause = token.upper()
@@ -133,7 +161,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Sequential Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def index_scan(self, plan):
@@ -141,7 +169,7 @@ class Annotator:
         
         annotation = "The table \""+ plan["Relation Name"] + "\" is read using an Index Scan."
         if "Index Cond" in plan:
-            annotation += f" The index condition is {plan['Index Cond'][1:-1]}."
+            annotation += f" The index condition is \"{plan['Index Cond'][1:-1]}\"."
         self.scans_dict[plan["Alias"]] = annotation
 
     def index_only_scan(self, plan):
@@ -149,7 +177,7 @@ class Annotator:
         
         annotation = "The table \""+ plan["Relation Name"] + "\" is read using an Index Only Scan."
         if "Index Cond" in plan:
-            annotation += f" The index condition is {plan['Index Cond'][1:-1]}."
+            annotation += f" The index condition is \"{plan['Index Cond'][1:-1]}\"."
         self.scans_dict[plan["Alias"]] = annotation
 
     def bitmap_index_scan(self, plan):
@@ -157,7 +185,7 @@ class Annotator:
         
         annotation = "The table \""+ plan["Relation Name"] + "\" is read using a Bitmap Index Scan."
         if "Index Cond" in plan:
-            annotation += f" The index condition is {plan['Index Cond'][1:-1]}."
+            annotation += f" The index condition is \"{plan['Index Cond'][1:-1]}\"."
         self.scans_dict[plan["Alias"]] = annotation
 
     def bitmap_heap_scan(self, plan):
@@ -165,7 +193,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Bitmap Heap Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def sample_scan(self, plan):
@@ -173,7 +201,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Sample Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def tid_scan(self, plan):
@@ -181,7 +209,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Tid Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def tid_range_scan(self, plan):
@@ -189,7 +217,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Tid Range Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def subquery_scan(self, plan):
@@ -197,7 +225,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Subquery Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def function_scan(self, plan):
@@ -205,7 +233,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Function Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def table_function_scan(self, plan):
@@ -213,7 +241,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Table Function Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def values_scan(self, plan):
@@ -221,7 +249,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Values Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def cte_scan(self, plan):
@@ -229,7 +257,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a CTE Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def named_tuplestore_scan(self, plan):
@@ -237,7 +265,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Named Tuplestore Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def worktable_scan(self, plan):
@@ -245,7 +273,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Worktable Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def foreign_scan(self, plan):
@@ -253,7 +281,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Foreign Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     def custom_scan(self, plan):
@@ -261,7 +289,7 @@ class Annotator:
         
         annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Custom Scan."
         if "Filter" in plan:
-            annotation += f" The filter {plan['Filter'][1:-1]} is applied."
+            annotation += f" The filter \"{plan['Filter'][1:-1]}\" is applied."
         self.scans_dict[plan["Alias"]] = annotation
 
     """ Other Nodes """
@@ -302,16 +330,25 @@ class Annotator:
         pass
 
     def sort(self, plan):
-        pass
+        annotation = f"This sort is performed with sort key(s) \"{', '.join(plan['Sort Key'])}\"."
+        if "Sort Method" in plan:
+            annotation += f" The sort method is \"{plan['Sort Method']}\"."
+        self.sorts_arr.append(annotation)
 
     def incremental_sort(self, plan):
-        pass
+        annotation = f"This sort is performed with sort key(s) \"{', '.join(plan['Sort Key'])}\"."
+        if "Sort Method" in plan:
+            annotation += f" The sort method is \"{plan['Sort Method']}\"."
+        self.sorts_arr.append(annotation)
 
     def group(self, plan):
         pass
 
     def aggregate(self, plan):
-        pass
+        annotation = f"This aggregation is performed with the strategy \"{plan['Strategy']}\"."
+        if "Filter" in plan:
+            annotation += f" The filter \"{plan['Filter']}\" is applied."
+        self.aggregates_arr.append(annotation)
 
     def window_agg(self, plan):
         pass

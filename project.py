@@ -22,18 +22,27 @@ def get_annotated_query(query):
 username = "postgres"
 password = "admin"
 host = "localhost"
-database = "TPC-H"
+database = "cz4031"  # "TPC-H" "cz4031"
+# q1 = "SELECT * FROM customer, nation WHERE nation.n_nationkey = 0"
 q1 = "SELECT * FROM customer, nation, supplier WHERE nation.n_nationkey = 0"
 # q1 = "INSERT INTO region VALUES (5, 'SINGAPORE', 'little comment')"
 # q1 = "select * from customer c, orders o where c.c_custkey = o.o_custkey"
 # q1 = "select * from customer c where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 )"
+# q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 and l1.l_partkey = 5 ) and l1.l_suppkey = 7"
+# q1 = "select avg(c_acctbal) from customer where c_custkey < 5"
+# q1 = "select c_nationkey, c_mktsegment, sum(c_acctbal) from customer where c_custkey < 10 group by c_nationkey, c_mktsegment"
+# q1 = "select c_nationkey from customer c where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 ) group by c_nationkey"
+# q1 = "select c_nationkey, c_name from customer c where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 ) group by c_nationkey, c_name order by c_name"
+# q1 = "select c.c_name from customer c where c.c_nationkey IN ( select n.n_nationkey from nation n, region r where r_regionkey < 5 )"  # from with single table that needs join
 
 processor = QueryProcessor(username, password, host, database)
 annotator = Annotator()
-print(get_annotated_query(q1))
-
-
-
+try:
+    annotated_dict, tokenized_query = get_annotated_query(q1)
+    print(annotated_dict)
+    print(list(enumerate(tokenized_query)))
+except Exception:
+    print(get_annotated_query(q1))
 
 
 
