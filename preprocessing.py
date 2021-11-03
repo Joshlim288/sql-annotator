@@ -30,6 +30,8 @@ class QueryProcessor:
     
     def tokenize_query(self, query):
         clean_query = query.replace(",", " , ") # isolate commas
+        clean_query = clean_query.replace("(", " ( ") # isolate lparen
+        clean_query = clean_query.replace(")", " ) ") # isolate rparen
         return clean_query.split()
 
         

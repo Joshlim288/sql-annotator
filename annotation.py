@@ -98,12 +98,19 @@ class Annotator:
                         self.annotations_dict[clause_index] = "This join is carried out with a " + self.annotations_dict[clause_index] + "."
 
                 elif token in self.scans_dict.keys(): # attach scans to the index of their alias names within FROM clause
-                    self.annotations_dict[i] = self.scans_dict[token]
-                    if table_counter == 1:
-                        self.annotations_dict[clause_index] = self.joins_arr.pop(0)
-                    elif table_counter > 1: # children join is conducted first
-                        self.annotations_dict[clause_index] = self.joins_arr.pop(0) + ", followed by a " + self.annotations_dict[clause_index]
+                    self.annotations_dict[i] = self.scans_dict[token] # annotate current token with it's related scan annotation
+                    if table_counter == 1: # If 2 tables in the from clause, annotate it with a join
+                        self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
+                    elif table_counter > 1: # If more than 2 tables in the from clause, annotate with a join for each
+                        self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"] + ", followed by a " + self.annotations_dict[clause_index]
                     table_counter += 1
+                
+                if len(self.joins_arr) > 0:
+                    for condName in self.joins_arr[0]["conds"]:
+                        if (condName in token and table_counter == 1): # if part of a condition is found in a where clause and only one table in the from clause
+                            self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
+                            break
+
 
             elif current_clause == "SELECT":  # attach aggregate annotations
                 if token.upper() in self.sql_keywords: # Finish annotation for the SELECT clause
@@ -140,13 +147,49 @@ class Annotator:
         """
         Each nested loop node type has an array Plans of size 2.
         """
-        self.joins_arr.append("Nested Loop Join")
+        for key in plan.keys():
+            if "cond" in key.lower():
+                conds = plan[key].strip('()').split(' ') 
+                self.joins_arr.append({
+                        "name": "Nested Loop Join", 
+                        "conds": [conds[0], conds[-1]] # ignore operators
+                    })
+                return
+
+        self.joins_arr.append({
+                        "name": "Nested Loop Join", 
+                        "conds": []
+                    })
 
     def hash_join(self, plan):
-        self.joins_arr.append("Hash Join")
+        for key in plan.keys():
+            if "cond" in key.lower():
+                conds = plan[key].strip('()').split(' ') 
+                self.joins_arr.append({
+                        "name": "Hash Join", 
+                        "conds": [conds[0], conds[-1]] # ignore operators
+                    })
+                return
+
+        self.joins_arr.append({
+                        "name": "Hash Join", 
+                        "conds": []
+                    })
 
     def merge_join(self, plan):
-        self.joins_arr.append("Merge Join")
+        for key in plan.keys():
+            if "cond" in key.lower():
+                conds = plan[key].strip('()').split(' ') 
+                self.joins_arr.append({
+                        "name": "Merge Join", 
+                        "conds": [conds[0], conds[-1]] # ignore operators
+                    })
+                return
+
+        self.joins_arr.append({
+                        "name": "Merge Join", 
+                        "conds": []
+                    })
 
     """ Scans """
     def __get_alias(self, plan):  # helper method to return alias of a table, if it exists
