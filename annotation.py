@@ -91,7 +91,7 @@ class Annotator:
         while i < len(tokenized_query):
             token = tokenized_query[i]
             if current_clause == "FROM": # inside a FROM clause
-                if token.upper() in self.sql_keywords: # Finish annotation for the FROM clause
+                if (token.upper() in self.sql_keywords or i == len(tokenized_query)-1): # Finish annotation for the FROM clause
                     current_clause = token.upper()
                     table_counter = 0
                     if clause_index in self.annotations_dict.keys():
