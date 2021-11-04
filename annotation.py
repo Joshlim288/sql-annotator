@@ -31,12 +31,10 @@ class Annotator:
             "Incremental Sort": self.incremental_sort,
             "Aggregate": self.aggregate,
         }
-        '''
-        with open('postgresql_keywords.txt') as f: # get all postgresql reserved keywords
-            self.sql_keywords = f.read().splitlines()
-        '''
-        self.sql_keywords = ["FROM", "SELECT", "ORDER", "GROUP"]
-        self.aggregates = ("AVG", "COUNT", "MAX", "MIN", "SUM")
+
+        # SQL keywords to look out for
+        self.sql_keywords = ["FROM", "SELECT", "ORDER", "GROUP", "UPDATE", "DELETE"]
+        self.aggregates = ("AVG", "COUNT", "MAX", "MIN", "SUM")  # need to be a tuple to use 'in'
         
 
     def annotate(self, query_plan, tokenized_query):
@@ -76,8 +74,8 @@ class Annotator:
             else:
                 # raise Exception("Invalid Node Type Found:", node_type)
                 continue
-
-            annotator(curr_plan)
+            if annotator:
+                annotator(curr_plan)
         
     def attach_annotations(self, tokenized_query):
         """
@@ -128,12 +126,10 @@ class Annotator:
                     # need to make sure still can attach annotation to group by if it's the last clause
                     self.annotations_dict[clause_index] = self.sorts_arr.pop(0)
             
-            # elif current_clause == "ORDER":  # attach order by annotations
-            #     if (token.upper() in self.sql_keywords or i == len(tokenized_query)-1) and len(self.sorts_arr) != 0: # Finish annotation for the GROUP BY clause
-            #         # need to make sure still can attach annotation to group by if it's the last clause
-            #         # group by has priority over order by - so if both appear together, order by may not have any sorts to attach to
-            #         self.annotations_dict[clause_index] = self.sorts_arr.pop(0)
-
+            elif current_clause == "UPDATE" or current_clause == "DELETE":  # for these, just attach scans, if any
+                if token in self.scans_dict.keys():
+                    self.annotations_dict[i] = self.scans_dict[token] # annotate current token with it's related scan annotation
+                    
             if (token.upper() in self.sql_keywords):
                 current_clause = token.upper()
                 clause_index = i
@@ -210,7 +206,7 @@ class Annotator:
     def index_scan(self, plan):
         alias = self.__get_alias(plan)
         
-        annotation = "The table \""+ plan["Relation Name"] + "\" is read using an Index Scan."
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using an Index Scan."
         if "Index Cond" in plan:
             annotation += f" The index condition is \"{plan['Index Cond'][1:-1]}\"."
         self.scans_dict[plan["Alias"]] = annotation
@@ -218,7 +214,7 @@ class Annotator:
     def index_only_scan(self, plan):
         alias = self.__get_alias(plan)
         
-        annotation = "The table \""+ plan["Relation Name"] + "\" is read using an Index Only Scan."
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using an Index Only Scan."
         if "Index Cond" in plan:
             annotation += f" The index condition is \"{plan['Index Cond'][1:-1]}\"."
         self.scans_dict[plan["Alias"]] = annotation
@@ -226,7 +222,7 @@ class Annotator:
     def bitmap_index_scan(self, plan):
         alias = self.__get_alias(plan)
         
-        annotation = "The table \""+ plan["Relation Name"] + "\" is read using a Bitmap Index Scan."
+        annotation = f"The table \"{plan['Relation Name']}\"{alias} is read using a Bitmap Index Scan."
         if "Index Cond" in plan:
             annotation += f" The index condition is \"{plan['Index Cond'][1:-1]}\"."
         self.scans_dict[plan["Alias"]] = annotation
