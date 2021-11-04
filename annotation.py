@@ -30,6 +30,8 @@ class Annotator:
             "Sort": self.sort,
             "Incremental Sort": self.incremental_sort,
             "Aggregate": self.aggregate,
+            "GroupAggregate": self.groupaggregate,
+            "HashAggregate": self.hashaggregate,
         }
 
         # SQL keywords to look out for
@@ -42,6 +44,7 @@ class Annotator:
         self.joins_arr = []
         self.aggregates_arr = []
         self.sorts_arr = []
+        self.subplans_arr = []
         self.annotations_dict = {}
 
         self.add_annotations(query_plan)
@@ -61,6 +64,15 @@ class Annotator:
             if "Plans" in curr_plan:  # this operator has child operations
                 for plan in curr_plan["Plans"]:
                     queue.append(plan)
+
+            if "Subplan Name" in curr_plan:  # this plan creates a subplan
+                subplan_name = curr_plan["Subplan Name"]
+                match = re.search("\$\d+", subplan_name)
+                if match:  
+                    # if match, subplan_name is e.g. "InitPlan 1 (returns $1)". Extract $1
+                    # if no match, subplan_name is e.g. "SubPlan 1". Do nothing
+                    subplan_name = match.group(0)
+                self.subplans_arr.append(subplan_name)
 
             # add annotations for curr_plan
             node_type = curr_plan["Node Type"]
@@ -82,6 +94,8 @@ class Annotator:
         Attaches the annotations for joins to their respective FROM clauses
         """
         self.annotations_dict = {}
+        brackets_stack = []
+        brackets_arr = []  # array of [index, index] 
         current_clause = tokenized_query[0].upper()
         table_counter = 0
         clause_index = 0
@@ -109,7 +123,6 @@ class Annotator:
                             self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
                             break
 
-
             elif current_clause == "SELECT":  # attach aggregate annotations
                 if token.upper() in self.sql_keywords: # Finish annotation for the SELECT clause
                     current_clause = token.upper()
@@ -130,12 +143,21 @@ class Annotator:
                 if token in self.scans_dict.keys():
                     self.annotations_dict[i] = self.scans_dict[token] # annotate current token with it's related scan annotation
                     
-            if (token.upper() in self.sql_keywords):
+            if token.upper() in self.sql_keywords:
                 current_clause = token.upper()
                 clause_index = i
-
+            else:
+                if token == '(':
+                    brackets_stack.append(i)
+                elif token == ')':
+                    open_bracket = brackets_stack.pop()
+                    brackets_arr.append((open_bracket, i))
             i += 1
-
+        
+        # annotate brackets
+        while len(brackets_arr) != 0 and len(self.subplans_arr) != 0:
+            bracket = brackets_arr.pop()  # outer most bracket is the 1st subplan
+            self.annotations_dict[bracket] = f"Results of this group are stored in \"{self.subplans_arr.pop(0)}\""
 
     """ Methods to handle each node type """
     """ Joins """
@@ -385,6 +407,18 @@ class Annotator:
 
     def aggregate(self, plan):
         annotation = f"This aggregation is performed with the strategy \"{plan['Strategy']}\"."
+        if "Filter" in plan:
+            annotation += f" The filter \"{plan['Filter']}\" is applied."
+        self.aggregates_arr.append(annotation)
+
+    def groupaggregate(self, plan):
+        annotation = f"This aggregation is performed using GroupAggregate and with the strategy \"{plan['Strategy']}\"."
+        if "Filter" in plan:
+            annotation += f" The filter \"{plan['Filter']}\" is applied."
+        self.aggregates_arr.append(annotation)
+
+    def hashaggregate(self, plan):
+        annotation = f"This aggregation is performed using HashAggregate and with the strategy \"{plan['Strategy']}\"."
         if "Filter" in plan:
             annotation += f" The filter \"{plan['Filter']}\" is applied."
         self.aggregates_arr.append(annotation)
