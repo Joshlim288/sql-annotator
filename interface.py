@@ -12,7 +12,20 @@ class WelcomeScreen(QDialog):
         self.loadDatabaseButton.clicked.connect(self.goToQueryScreen)
         self.quitButton.clicked.connect(self.quit)
 
+
     def goToQueryScreen(self):
+        self.username = self.username_input.toPlainText()
+        self.password = self.password_input.toPlainText()
+        self.host = self.host_input.toPlainText()
+        self.database = self.database_input.toPlainText()
+
+        # for testing
+        print("hello")
+        print(self.username)
+        print(self.password)
+        print(self.host)
+        print(self.database)
+        
         queryScreen = QueryScreen()
         widgetStack.addWidget(queryScreen)
         widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
