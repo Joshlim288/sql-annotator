@@ -1,8 +1,11 @@
 import sys
 import os
+import re
 from PyQt5.uic import loadUi
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QDialog, QApplication,QTextEdit
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QDialog, QApplication
+from PyQt5.QtGui import QFont, QSyntaxHighlighter, QTextCharFormat
 
 # Temp sample data
 tempAnnotatedDict = {4: 'The table "customer" (alias "c") is read using an Index Scan. The index condition is "c_custkey = $1".', 7: 'The table "lineitem" (alias "l1") is read using an Index Scan. The index condition is "l_suppkey = 7".', 2: 'This join is carried out with a Nested Loop Join.', 15: 'The table "orders" is read using a Sequential Scan. The filter "o_custkey = 4" is applied.', 18: 'The table "lineitem" (alias "l2") is read using an Index Only Scan. The index condition is "l_partkey = 5".', 14: 'This join is carried out with a Nested Loop Join.', (11, 27): 'Results of this group are stored in "$1"'}
@@ -36,12 +39,44 @@ class WelcomeScreen(QDialog):
     def quit(self):
         app.quit()
 
+class Highlighter(QSyntaxHighlighter):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._mapping = {}
+    
+    def add_mapping(self, pattern, pattern_format):
+        self._mapping[pattern] = pattern_format
+
+    # Reimplementing highlightBlock() with own rules
+    def highlightBlock(self, text_block):
+        for pattern, fmt in self._mapping.items():
+            for match in re.finditer(pattern, text_block):
+                start, end = match.span()
+                self.setFormat(start, end-start, fmt)
+
 class QueryScreen(QDialog):
     def __init__(self):
         super(QueryScreen, self).__init__()
         loadUi(os.path.join(os.path.dirname(__file__), 'QueryScreen.ui'), self)
         self.submitButton.clicked.connect(self.clickSubmit)
         self.backButton.clicked.connect(self.goToWelcomeScreen)
+
+        self.highlighter = Highlighter()
+        self.highlighter.setDocument(self.queryInput.document())
+        self.setUpEditor()
+
+    def setUpEditor(self):
+        # Formatting of keywords
+        keyword_format = QTextCharFormat()
+        keyword_format.setForeground(Qt.darkMagenta)
+        keyword_format.setFontWeight(QFont.Bold)
+        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\bhaving\b'
+        self.highlighter.add_mapping(pattern, keyword_format)
+
+        and_format = QTextCharFormat()
+        and_format.setForeground(Qt.blue)
+        pattern = r'\band\b'
+        self.highlighter.add_mapping(pattern, and_format)
 
     def clickSubmit(self):
         # pass the text
@@ -66,36 +101,63 @@ class QEPScreen(QDialog):
         self.query = query
         self.annotated_dict = annotated_dict
         self.tokenized_query = tokenized_query
+        self.highlighter = Highlighter()
 
         loadUi(os.path.join(os.path.dirname(__file__), 'QEPScreen.ui'),self)
 
         # display the annotation
         self.displayAnnotation(self.query)
         self.backButton.clicked.connect(self.goToQueryScreen)
+        self.highlighter.setDocument(self.queryText.document())
+        self.setUpEditor()
+
+    def setUpEditor(self):
+        # Formatting of keywords
+        keyword_format = QTextCharFormat()
+        keyword_format.setForeground(Qt.darkMagenta)
+        keyword_format.setFontWeight(QFont.Bold)
+        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\bhaving\b'
+        self.highlighter.add_mapping(pattern, keyword_format)
+
+        and_format = QTextCharFormat()
+        and_format.setForeground(Qt.blue)
+        pattern = r'\band\b'
+        self.highlighter.add_mapping(pattern, and_format)
 
     def goToQueryScreen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
 
     def displayAnnotation(self, query: str):
-        """ display the annotation to the query """
-
         tempString = ""
 
         if self.isAnnotationValid(query):
             for value in self.tokenized_query:
-                if value[1] == "where" or value[1] == "from" or value[1] == "(":
-                    self.queryText.append(tempString)
-                    tempString = value[1] + " "
-                else:
-                    tempString += value[1]
-                    tempString += " "
-            self.queryText.append(tempString)
 
+                # Check if token needs to be highlighted
+                if value[0] in self.annotated_dict.keys():
+                    token_to_add = "<font style='background-color: #FFFF00'>" + value[1] + "</font>"
+                else:
+                    token_to_add = "<font>" + value[1] + "</font>"
+
+                # Once a new keyword appears, print out previous tokens and start newline
+                if value[1] == "where" or value[1] == "from" or value[1] == "(":
+                    #self.queryText.appendPlainText(tempString)
+                    self.queryText.appendHtml(tempString)
+                    tempString = token_to_add + " "
+                else:
+                    tempString += token_to_add
+                    tempString += " "
+            
+            # Print out last line of query
+            self.queryText.appendHtml(tempString)
+            # self.queryText.appendPlainText(tempString)
+
+            # To-do: Add legend for annotations at side
             for value in self.annotated_dict.values():
                 self.annotation.append(value + "\n")
 
         else:
-            self.queryText.append("The query is invalid, please try again")
+            self.queryText.appendPlainText("The query is invalid, please try again")
             self.annotation.append("The query is invalid, please try again")
 
     def isAnnotationValid(self, query: str) -> bool:
