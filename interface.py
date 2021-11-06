@@ -3,8 +3,8 @@ import os
 import re
 from PyQt5.uic import loadUi
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDialog, QApplication
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import QDialog, QApplication, QWidget
 from PyQt5.QtGui import QFont, QSyntaxHighlighter, QTextCharFormat
 
 # Temp sample data
@@ -111,6 +111,9 @@ class QEPScreen(QDialog):
         self.highlighter.setDocument(self.queryText.document())
         self.setUpEditor()
 
+        # self.backButton_2.clicked.connect(self.clearStuff)
+        # self.activeHighlight = 2
+
     def setUpEditor(self):
         # Formatting of keywords
         keyword_format = QTextCharFormat()
@@ -128,33 +131,49 @@ class QEPScreen(QDialog):
         widgetStack.removeWidget(widgetStack.currentWidget())
 
     def displayAnnotation(self, query: str):
+
+        colorArray= ["#FFFF00", "#DE9EC1", "#ED6A13" ,"#59F0FF", "#12EC83", "#EDAF13", "#BD9FDF" , "#DE9EA3"]
         tempString = ""
+        arrayIndex = 0
+        colorAllocation = {}
 
         if self.isAnnotationValid(query):
+
+            # Iterate through annotations and set the colors for each annotation before printing
+            for key, value in self.annotated_dict.items():
+                colorAllocation[key] = colorArray[arrayIndex]
+                self.annotation.appendHtml("<font style='background-color: " + colorArray[arrayIndex] + "'>" + str(arrayIndex+1) + ")</font>" + "<font> " + value + "</font>")
+                self.annotation.appendHtml("<font></font>")
+                arrayIndex += 1
+
+            # Iterate through query tokens and highlight if necessary by checking colorAllocation
             for value in self.tokenized_query:
+                highlight = ""
 
                 # Check if token needs to be highlighted
-                if value[0] in self.annotated_dict.keys():
-                    token_to_add = "<font style='background-color: #FFFF00'>" + value[1] + "</font>"
+                for key in colorAllocation.keys():
+                    if isinstance(key, tuple):
+                        if value[0] in key:
+                            highlight = colorAllocation[key]
+                            break
+                    elif value[0] == key:
+                        highlight = colorAllocation[key]
+                        break
+                        
+                if highlight != "":
+                    token_to_add = "<font style='background-color: " + highlight + "'>" + value[1] + "</font>"
                 else:
                     token_to_add = "<font>" + value[1] + "</font>"
 
                 # Once a new keyword appears, print out previous tokens and start newline
                 if value[1] == "where" or value[1] == "from" or value[1] == "(":
-                    #self.queryText.appendPlainText(tempString)
                     self.queryText.appendHtml(tempString)
                     tempString = token_to_add + " "
                 else:
-                    tempString += token_to_add
-                    tempString += " "
+                    tempString += token_to_add + " "
             
             # Print out last line of query
             self.queryText.appendHtml(tempString)
-            # self.queryText.appendPlainText(tempString)
-
-            # To-do: Add legend for annotations at side
-            for value in self.annotated_dict.values():
-                self.annotation.append(value + "\n")
 
         else:
             self.queryText.appendPlainText("The query is invalid, please try again")
