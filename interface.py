@@ -56,14 +56,6 @@ class WelcomeScreen(QDialog):
             error_screen = ErrorScreen()
             widgetStack.addWidget(error_screen)
             widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
-            
-    def isValidInput(self):
-        '''Connect to the database and check whether the user's input is valid
-            
-        Currently the default value is set to False to test the error page
-        '''
-        return False
-
 
     def quit(self):
         app.quit()
