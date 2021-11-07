@@ -37,7 +37,7 @@ class WelcomeScreen(QDialog):
             widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
             
     def isValidInput(self):
-        '''Connect to the databse and check whether the user's input is valid
+        '''Connect to the database and check whether the user's input is valid
             
         Currently the default value is set to False to test the error page
         '''
