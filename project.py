@@ -41,7 +41,9 @@ database = "cz4031"  # "TPC-H" "cz4031"
 # test double bracket
 # q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 and l1.l_partkey = 5 ) and l1.l_suppkey = ( select ps_suppkey from partsupp where ps_availqty = 4 )"
 # test nested loop is a subplan
-q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders, lineitem l2 where o_custkey = 4 and l2.l_partkey = 5) and l1.l_suppkey = 7"
+# q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders, lineitem l2 where o_custkey = 4 and l2.l_partkey = 5) and l1.l_suppkey = 7"
+
+# q1 = "select * from customer where c_custkey = ( select c_custkey from customer where c_custkey = 5)"
 
 try:   
     processor = QueryProcessor(username, password, host, database)
