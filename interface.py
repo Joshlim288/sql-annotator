@@ -25,16 +25,23 @@ class WelcomeScreen(QDialog):
         self.host = self.host_input.toPlainText()
         self.database = self.database_input.toPlainText()
 
-        # for testing
-        print("hello")
-        print(self.username)
-        print(self.password)
-        print(self.host)
-        print(self.database)
-        
-        queryScreen = QueryScreen()
-        widgetStack.addWidget(queryScreen)
-        widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
+        if self.isValidInput() == True:            
+            queryScreen = QueryScreen()
+            widgetStack.addWidget(queryScreen)
+            widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
+            
+        else:
+            # show Error Screen
+            error_screen = ErrorScreen()
+            widgetStack.addWidget(error_screen)
+            widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
+            
+    def isValidInput(self):
+        '''Connect to the databse and check whether the user's input is valid
+            
+        Currently the default value is set to False to test the error page
+        '''
+        return False
 
     def quit(self):
         app.quit()
@@ -53,6 +60,20 @@ class Highlighter(QSyntaxHighlighter):
             for match in re.finditer(pattern, text_block):
                 start, end = match.span()
                 self.setFormat(start, end-start, fmt)
+
+class ErrorScreen(QDialog):
+    ''' 
+    The screen that shows the error window for invalid input in the welcome screen
+    '''
+
+    def __init__(self):
+        super(ErrorScreen, self).__init__()
+        loadUi(os.path.join(os.path.dirname(__file__), 'ErrorScreen.ui'), self)
+        self.backButton.clicked.connect(self.goToWelcomeScreen)
+
+    def goToWelcomeScreen(self):
+        widgetStack.removeWidget(widgetStack.currentWidget())
+
 
 class QueryScreen(QDialog):
     def __init__(self):
