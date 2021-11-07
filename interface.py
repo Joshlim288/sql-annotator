@@ -186,7 +186,7 @@ class QEPScreen(QDialog):
 
     def displayAnnotation(self):
 
-        colorArray= ["#FFFF00", "#DE9EC1", "#ED6A13" ,"#59F0FF", "#12EC83", "#EDAF13", "#BD9FDF" , "#DE9EA3"]
+        colorArray= ["#FFFF00", "#DE9EC1", "#ED6A13" ,"#59F0FF", "#12EC83", "#EDAF13", "#BD9FDF" , "#DE9EA3", "#423FDA", "#EC0A2F", "#62EC0A"]
         tempString = ""
         arrayIndex = 0
         colorAllocation = {}
