@@ -67,7 +67,7 @@ class Highlighter(QSyntaxHighlighter):
     # Reimplementing highlightBlock() with own rules
     def highlightBlock(self, text_block):
         for pattern, fmt in self._mapping.items():
-            for match in re.finditer(pattern, text_block):
+            for match in re.finditer(pattern, text_block, re.IGNORECASE):
                 start, end = match.span()
                 self.setFormat(start, end-start, fmt)
 
@@ -105,13 +105,18 @@ class QueryScreen(QDialog):
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(Qt.darkMagenta)
         keyword_format.setFontWeight(QFont.Bold)
-        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\bhaving\b'
+        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b'
         self.highlighter.add_mapping(pattern, keyword_format)
 
         and_format = QTextCharFormat()
         and_format.setForeground(Qt.blue)
-        pattern = r'\band\b'
+        pattern = r'\band\b|\bor\b'
         self.highlighter.add_mapping(pattern, and_format)
+
+        aggregate_format = QTextCharFormat()
+        aggregate_format.setForeground(Qt.red)
+        pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
+        self.highlighter.add_mapping(pattern, aggregate_format)
 
     def clickSubmit(self):
         self.text = self.queryInput.toPlainText()
@@ -163,13 +168,18 @@ class QEPScreen(QDialog):
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(Qt.darkMagenta)
         keyword_format.setFontWeight(QFont.Bold)
-        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\bhaving\b'
+        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b'
         self.highlighter.add_mapping(pattern, keyword_format)
 
         and_format = QTextCharFormat()
         and_format.setForeground(Qt.blue)
-        pattern = r'\band\b'
+        pattern = r'\band\b|\bor\b'
         self.highlighter.add_mapping(pattern, and_format)
+
+        aggregate_format = QTextCharFormat()
+        aggregate_format.setForeground(Qt.red)
+        pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
+        self.highlighter.add_mapping(pattern, aggregate_format)
 
     def goToQueryScreen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
