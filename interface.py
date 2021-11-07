@@ -180,55 +180,70 @@ class QEPScreen(QDialog):
         tempString = ""
         arrayIndex = 0
         colorAllocation = {}
+        tokens_to_newline = ["select", "where", "from", "group", "order"]
 
         # Iterate through annotations and set the colors for each annotation before printing
         for key, value in self.annotated_dict.items():
-            colorAllocation[key] = colorArray[arrayIndex]
-            self.annotation.appendHtml("<font style='background-color: " + colorArray[arrayIndex] + "'>" + str(arrayIndex+1) + ")</font>" + "<font> " + value + "</font>")
-            self.annotation.appendHtml("<font></font>")
-            arrayIndex += 1
+            if (key != "cost"):
+                value = value.replace("<", "&lt;") # "&lt;" needs to be used for printing "<" in HTML
+                colorAllocation[key] = colorArray[arrayIndex]
+                self.annotation.appendHtml("<font style='background-color: " + colorArray[arrayIndex] + "'>" + str(arrayIndex+1) + ")</font>" + "<font> " + value + "</font>")
+                self.annotation.appendHtml("<font></font>")
+                arrayIndex += 1
+            else:
+                self.annotation.appendHtml("<font>------------</font>")
+                self.annotation.appendHtml("<font></font>")
+                self.annotation.appendHtml("<font> " + value + "</font>")
  
         # Keeps track of how much indentation to add for a newline
         indent_amount = 0
 
         # Iterate through query tokens and highlight if necessary by checking colorAllocation
-        for value in self.tokenized_query:
-            highlight = ""
-
-            # Check if token needs to be highlighted
-            for key in colorAllocation.keys():
-                if isinstance(key, tuple):
-                    if value[0] in key:
+        for idx, value in enumerate(self.tokenized_query):
+            
+            # "&lt;" needs to be used for printing "<" in HTML
+            if value[1] == "<":
+                token_to_add = "<font style='background-color: " + highlight + "'>" +  "&lt;" + "</font>"
+            else:
+                # Check if token needs to be highlighted
+                highlight = ""
+                
+                for key in colorAllocation.keys():
+                    if isinstance(key, tuple):
+                        if value[0] in key:
+                            highlight = colorAllocation[key]
+                            break
+                    elif value[0] == key:
                         highlight = colorAllocation[key]
                         break
-                elif value[0] == key:
-                    highlight = colorAllocation[key]
-                    break
-                    
-            if highlight != "":
-                token_to_add = "<font style='background-color: " + highlight + "'>" + value[1] + "</font>"
-            else:
-                token_to_add = "<font>" + value[1] + "</font>"
+
+                if highlight != "":
+                    token_to_add = "<font style='background-color: " + highlight + "'>" + value[1] + "</font>"
+                else:
+                    token_to_add = "<font>" + value[1] + "</font>"
 
             # Once a new keyword appears, print out previous tokens and start newline
-            if value[1] == "where" or value[1] == "from":
+            if value[1] in tokens_to_newline:
                 self.queryText.appendHtml(tempString)
                 tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
             elif value[1] == "(":
-                self.queryText.appendHtml(tempString)
+                tempString += token_to_add + " "
                 indent_amount += 4
-                tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
             elif value[1] == ")":
-                tempString += token_to_add
-                self.queryText.appendHtml(tempString)
-                tempString = ""
                 indent_amount -= 4
+                if len(self.tokenized_query) == idx + 1: # Closing bracket is last token, append after newline
+                    self.queryText.appendHtml(tempString)
+                    tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+                elif not self.tokenized_query[idx+1][1] == "from": # Closing bracket is from subplan, append after newline
+                    self.queryText.appendHtml(tempString)
+                    tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+                else: # Closing bracket is from aggregate function, append without newline
+                    tempString += token_to_add + " "
             else:
                 tempString += token_to_add + " "
  
         # Print out last line of query
         self.queryText.appendHtml(tempString)
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
