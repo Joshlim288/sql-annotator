@@ -1,4 +1,5 @@
 import re
+from collections import OrderedDict
 class Annotator:
 
     def __init__(self):
@@ -31,7 +32,15 @@ class Annotator:
         self.prepare_annotations(query_plan)
         self.attach_annotations(tokenized_query)
         self.annotations_dict["cost"] = "Total cost of the query plan is: " + str([query_plan][0]["Total Cost"]) + "."
-        return self.annotations_dict
+
+        ordered = OrderedDict()  # order annotations by token id
+        token_ids = list(self.annotations_dict.keys())
+        token_ids.remove("cost")  # not involved in sorting
+        sort_key = lambda x: x if type(x) != tuple else x[0]  # if token_id is a tuple, then we compare using the 1st element of the tuple
+        for token_id in sorted(token_ids, key=sort_key):
+            ordered[token_id] = self.annotations_dict[token_id]
+        ordered["cost"] = self.annotations_dict["cost"]
+        return ordered
 
     def prepare_annotations(self, query_plan):
         """
