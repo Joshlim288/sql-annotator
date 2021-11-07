@@ -49,6 +49,7 @@ class Annotator:
 
         self.add_annotations(query_plan)
         self.attach_annotations(tokenized_query)
+        self.annotations_dict["cost"] = "Total cost of the query plan is: " + str([query_plan][0]["Total Cost"]) + "."
         return self.annotations_dict
 
     def add_annotations(self, query_plan):
@@ -62,8 +63,8 @@ class Annotator:
         while len(queue) != 0:
             curr_plan = queue.pop(0)
             if "Plans" in curr_plan:  # this operator has child operations
-                for plan in curr_plan["Plans"]:
-                    queue.append(plan)
+                for i in range(len(curr_plan["Plans"])):
+                    queue.insert(0, curr_plan["Plans"][len(curr_plan["Plans"]) - 1 - i]) # insert in reverse order, so first subplan is examined first
 
             if "Subplan Name" in curr_plan:  # this plan creates a subplan
                 subplan_name = curr_plan["Subplan Name"]
@@ -169,7 +170,7 @@ class Annotator:
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
                 self.joins_arr.append({
-                        "name": "Nested Loop Join", 
+                        "name": "Nested Loop Join with condition: \'" + plan[key].strip('()') + "\'", 
                         "conds": [conds[0], conds[-1]] # ignore operators
                     })
                 return
@@ -184,7 +185,7 @@ class Annotator:
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
                 self.joins_arr.append({
-                        "name": "Hash Join", 
+                        "name": "Hash Join with condition: \'" + plan[key].strip('()') + "\'", 
                         "conds": [conds[0], conds[-1]] # ignore operators
                     })
                 return
@@ -199,7 +200,7 @@ class Annotator:
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
                 self.joins_arr.append({
-                        "name": "Merge Join", 
+                        "name": "Merge Join with condition: \'" + plan[key].strip('()') + "\'", 
                         "conds": [conds[0], conds[-1]] # ignore operators
                     })
                 return
