@@ -43,7 +43,11 @@ q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_order
 # test nested loop is a subplan
 q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders, lineitem l2 where o_custkey = 4 and l2.l_partkey = 5) and l1.l_suppkey = 7"
 
-processor = QueryProcessor(username, password, host, database)
+try:   
+    processor = QueryProcessor(username, "wrong", host, database)
+except Exception as e:
+    print(e)
+
 annotator = Annotator()
 try:
     annotated_dict, tokenized_query = get_annotated_query(q1)
@@ -51,8 +55,3 @@ try:
     print(list(enumerate(tokenized_query)))
 except Exception:
     print(get_annotated_query(q1))
-
-
-
-
-

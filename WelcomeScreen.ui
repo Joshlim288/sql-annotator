@@ -46,7 +46,7 @@
 font: 14pt &quot;MS Shell Dlg 2&quot;</string>
    </property>
    <property name="text">
-    <string>Load Database</string>
+    <string>Login!</string>
    </property>
   </widget>
   <widget class="QPushButton" name="quitButton">
