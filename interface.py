@@ -27,10 +27,6 @@ def get_annotated_query(query, processor, annotator):
     except Exception as e:
         return e
 
-# Temp sample data
-# tempAnnotatedDict = {4: 'The table "customer" (alias "c") is read using an Index Scan. The index condition is "c_custkey = $1".', 7: 'The table "lineitem" (alias "l1") is read using an Index Scan. The index condition is "l_suppkey = 7".', 2: 'This join is carried out with a Nested Loop Join.', 15: 'The table "orders" is read using a Sequential Scan. The filter "o_custkey = 4" is applied.', 18: 'The table "lineitem" (alias "l2") is read using an Index Only Scan. The index condition is "l_partkey = 5".', 14: 'This join is carried out with a Nested Loop Join.', (11, 27): 'Results of this group are stored in "$1"'}
-# tempTokenizedQuery = [(0, 'select'), (1, '*'), (2, 'from'), (3, 'customer'), (4, 'c'), (5, ','), (6, 'lineitem'), (7, 'l1'), (8, 'where'), (9, 'c.c_custkey'), (10, '='), (11, '('), (12, 'select'), (13, 'o_orderkey'), (14, 'from'), (15, 'orders'), (16, ','), (17, 'lineitem'), (18, 'l2'), (19, 'where'), (20, 'o_custkey'), (21, '='), (22, '4'), (23, 'and'), (24, 'l2.l_partkey'), (25, '='), (26, '5'), (27, ')'), (28, 'and'), (29, 'l1.l_suppkey'), (30, '='), (31, '7')]
-
 class WelcomeScreen(QDialog):
     def __init__(self):
         super(WelcomeScreen, self).__init__()
@@ -118,14 +114,21 @@ class QueryScreen(QDialog):
         self.highlighter.add_mapping(pattern, and_format)
 
     def clickSubmit(self):
-        # pass the text
         self.text = self.queryInput.toPlainText()
-        print(self.text)
         try:
             annotated_dict, tokenized_query = get_annotated_query(self.text, self.processor, self.annotator)
-            self.goToQEPScreen(annotated_dict, list(enumerate(tokenized_query)))
-        except Exception as e:
-            print(get_annotated_query(self.text, self.processor, self.annotator))
+            if annotated_dict:
+                self.errorMessage.setText("")
+                self.goToQEPScreen(annotated_dict, list(enumerate(tokenized_query)))
+            else:
+                # Query has no annotations 
+                self.errorMessage.setStyleSheet("color: #4BB543")
+                self.errorMessage.setText("Query executed successfully, but has no annotations for viewing!")
+        except Exception:
+            # Query execution has error, display error message
+            error_message = get_annotated_query(self.text, self.processor, self.annotator)
+            self.errorMessage.setStyleSheet("color: #FF0000")
+            self.errorMessage.setText(str(error_message))
 
     def goToWelcomeScreen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
@@ -185,6 +188,9 @@ class QEPScreen(QDialog):
             self.annotation.appendHtml("<font></font>")
             arrayIndex += 1
  
+        # Keeps track of how much indentation to add for a newline
+        indent_amount = 0
+
         # Iterate through query tokens and highlight if necessary by checking colorAllocation
         for value in self.tokenized_query:
             highlight = ""
@@ -205,9 +211,18 @@ class QEPScreen(QDialog):
                 token_to_add = "<font>" + value[1] + "</font>"
 
             # Once a new keyword appears, print out previous tokens and start newline
-            if value[1] == "where" or value[1] == "from" or value[1] == "(":
+            if value[1] == "where" or value[1] == "from":
                 self.queryText.appendHtml(tempString)
-                tempString = token_to_add + " "
+                tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+            elif value[1] == "(":
+                self.queryText.appendHtml(tempString)
+                indent_amount += 4
+                tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+            elif value[1] == ")":
+                tempString += token_to_add
+                self.queryText.appendHtml(tempString)
+                tempString = ""
+                indent_amount -= 4
             else:
                 tempString += token_to_add + " "
  
