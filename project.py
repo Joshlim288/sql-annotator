@@ -39,12 +39,12 @@ database = "cz4031"  # "TPC-H" "cz4031"
 # q1 = "select * from customer c, orders o where c.c_custkey = 5 or o.o_custkey = 5"
 
 # test double bracket
-q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 and l1.l_partkey = 5 ) and l1.l_suppkey = ( select ps_suppkey from partsupp where ps_availqty = 4 )"
+# q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders where o_custkey = 4 and l1.l_partkey = 5 ) and l1.l_suppkey = ( select ps_suppkey from partsupp where ps_availqty = 4 )"
 # test nested loop is a subplan
 q1 = "select * from customer c, lineitem l1 where c.c_custkey = ( select o_orderkey from orders, lineitem l2 where o_custkey = 4 and l2.l_partkey = 5) and l1.l_suppkey = 7"
 
 try:   
-    processor = QueryProcessor(username, "wrong", host, database)
+    processor = QueryProcessor(username, password, host, database)
 except Exception as e:
     print(e)
 

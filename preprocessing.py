@@ -15,7 +15,7 @@ class QueryProcessor:
             host=host,
             password=password
         )
-
+        conn.autocommit = True
         self.cur = conn.cursor()
 
     def process_query(self, query):
