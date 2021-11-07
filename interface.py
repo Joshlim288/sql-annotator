@@ -36,7 +36,7 @@ class WelcomeScreen(QDialog):
 
     def validateLogin(self):
         self.username = self.username_input.toPlainText()
-        self.password = self.password_input.toPlainText()
+        self.password = self.password_input.text()
         self.host = self.host_input.toPlainText()
         self.database = self.database_input.toPlainText()
 
