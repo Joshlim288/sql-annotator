@@ -170,7 +170,7 @@ class Annotator:
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
                 self.joins_arr.append({
-                        "name": "Nested Loop Join with condition: \'" + plan[key].strip('()') + "\'", 
+                        "name": "Nested Loop Join with condition: \'" + re.sub('[()]', '', plan[key]) + "\'", 
                         "conds": [conds[0], conds[-1]] # ignore operators
                     })
                 return
@@ -185,7 +185,7 @@ class Annotator:
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
                 self.joins_arr.append({
-                        "name": "Hash Join with condition: \'" + plan[key].strip('()') + "\'", 
+                        "name": "Hash Join with condition: \'" + re.sub('[()]', '', plan[key]) + "\'", 
                         "conds": [conds[0], conds[-1]] # ignore operators
                     })
                 return
@@ -200,7 +200,7 @@ class Annotator:
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
                 self.joins_arr.append({
-                        "name": "Merge Join with condition: \'" + plan[key].strip('()') + "\'", 
+                        "name": "Merge Join with condition: \'" + re.sub('[()]', '', plan[key]) + "\'", 
                         "conds": [conds[0], conds[-1]] # ignore operators
                     })
                 return
