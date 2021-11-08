@@ -188,18 +188,34 @@ class Annotator:
 
     """ Methods to handle each node type """
     def annotate_joins(self, plan):
+        name = plan["Node Type"]
+        join_conds = []
+        join_filter = ""
+
+        found_cond = False
+        found_filter = False
         for key in plan.keys():
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
-                self.joins_arr.append({
-                        "name": plan["Node Type"] + " with condition: \"" + re.sub('[()]', '', plan[key]) + "\"", 
-                        "conds": [conds[0], conds[-1]] # ignore operators
-                    })
-                return
+                name += " with condition: \"" + re.sub('[()]', '', plan[key]) + "\""
+                join_conds = [conds[0], conds[-1]] # ignore operators
+                found_cond = True
+                if found_cond and found_filter:
+                    break
+                # self.joins_arr.append({
+                #         "name": plan["Node Type"] + " with condition: \"" + re.sub('[()]', '', plan[key]) + "\"", 
+                #         "conds": [conds[0], conds[-1]] # ignore operators
+                #     })
+            if "Join Filter" == key:
+                if name == plan["Node Type"]:  # no join cond (or not yet added)
+                    name += f" with join filter: \"{plan[key][1:-1]}\""  # remove enclosing brackets
+                else:  # join cond added
+                    name += f" and join filter: \"{plan[key][1:-1]}\""  # remove enclosing brackets
 
         self.joins_arr.append({
-                        "name": plan["Node Type"], 
-                        "conds": []
+                        "name": name, 
+                        "conds": join_conds,
+                        "filter": join_filter
                     })
 
     def annotate_scans(self, plan):
