@@ -20,7 +20,7 @@
    <property name="geometry">
     <rect>
      <x>440</x>
-     <y>340</y>
+     <y>320</y>
      <width>211</width>
      <height>31</height>
     </rect>
@@ -36,8 +36,8 @@ font: 14pt &quot;MS Shell Dlg 2&quot;</string>
   <widget class="QPlainTextEdit" name="queryText">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>130</y>
+     <x>30</x>
+     <y>110</y>
      <width>321</width>
      <height>241</height>
     </rect>
@@ -55,24 +55,11 @@ font: 14pt &quot;MS Shell Dlg 2&quot;</string>
     <bool>true</bool>
    </property>
   </widget>
-  <widget class="QPlainTextEdit" name="annotation">
-   <property name="geometry">
-    <rect>
-     <x>390</x>
-     <y>130</y>
-     <width>321</width>
-     <height>191</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">font: 10pt &quot;MS Shell Dlg 2&quot;; background-color:rgb(255, 255, 255);</string>
-   </property>
-  </widget>
   <widget class="QLabel" name="titleText_2">
    <property name="geometry">
     <rect>
      <x>460</x>
-     <y>70</y>
+     <y>50</y>
      <width>191</width>
      <height>51</height>
     </rect>
@@ -87,8 +74,8 @@ font: 14pt &quot;MS Shell Dlg 2&quot;</string>
   <widget class="QLabel" name="titleText_3">
    <property name="geometry">
     <rect>
-     <x>90</x>
-     <y>70</y>
+     <x>70</x>
+     <y>50</y>
      <width>241</width>
      <height>51</height>
     </rect>
@@ -98,6 +85,22 @@ font: 14pt &quot;MS Shell Dlg 2&quot;</string>
    </property>
    <property name="text">
     <string>Query Executed:</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="titleText_4">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>370</y>
+     <width>611</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font: 11pt &quot;MS Shell Dlg 2&quot;; color:rgb(255, 255, 255)</string>
+   </property>
+   <property name="text">
+    <string>Tip: Hover over the annotations to only view the highlight for that annotation in the query!</string>
    </property>
   </widget>
  </widget>

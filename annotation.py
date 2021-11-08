@@ -3,6 +3,7 @@ from collections import OrderedDict
 class Annotator:
 
     def __init__(self):
+        # list of supported operators
         self.join_operators = ["Nested Loop", "Hash Join", "Merge Join"]
         self.scan_operators = [
             "Seq Scan", "Index Scan", "Index Only Scan", "Bitmap Index Scan", "Sample Scan", "Tid Scan", "Tid Range Scan", 
@@ -10,11 +11,11 @@ class Annotator:
             "WorkTable Scan", "Foreign Scan", "Custom Scan"
         ]
         self.other_operators = {
-            "Sort": self.sort,
-            "Incremental Sort": self.incremental_sort,
-            "Aggregate": self.aggregate,
-            "GroupAggregate": self.groupaggregate,
-            "HashAggregate": self.hashaggregate,
+            "Sort": self.annotate_sort,
+            "Incremental Sort": self.annotate_incremental_sort,
+            "Aggregate": self.annotate_aggregate,
+            "GroupAggregate": self.annotate_groupaggregate,
+            "HashAggregate": self.annotate_hashaggregate,
         }
 
         # SQL keywords to look out for
@@ -22,18 +23,22 @@ class Annotator:
         self.aggregates = ("AVG", "COUNT", "MAX", "MIN", "SUM")  # need to be a tuple to use 'in'
 
     def annotate(self, query_plan, tokenized_query):
+        # holds generated annotations
         self.scans_dict = {}
         self.joins_arr = []
         self.aggregates_arr = []
         self.sorts_arr = []
         self.subplans_arr = []
-        self.annotations_dict = {}
 
+        self.annotations_dict = {}  # dictionary of {token: annotation}
+
+        # generate the annotations - i.e. prepare annotations_dict
         self.prepare_annotations(query_plan)
         self.attach_annotations(tokenized_query)
         self.annotations_dict["cost"] = "Total cost of the query plan is: " + str([query_plan][0]["Total Cost"]) + "."
 
-        ordered = OrderedDict()  # order annotations by token id
+        # order annotations by token id
+        ordered = OrderedDict()  
         token_ids = list(self.annotations_dict.keys())
         token_ids.remove("cost")  # not involved in sorting
         sort_key = lambda x: x if type(x) != tuple else x[0]  # if token_id is a tuple, then we compare using the 1st element of the tuple
@@ -69,9 +74,9 @@ class Annotator:
             # add annotations for curr_plan
             node_type = curr_plan["Node Type"]
             if node_type in self.join_operators:
-                self.handle_joins(curr_plan)
+                self.annotate_joins(curr_plan)
             elif node_type in self.scan_operators:
-                self.handle_scans(curr_plan)
+                self.annotate_scans(curr_plan)
             elif node_type in self.other_operators:
                 self.other_operators[node_type](curr_plan)
             else:
@@ -79,7 +84,7 @@ class Annotator:
         
     def attach_annotations(self, tokenized_query):
         """
-        Attaches the annotations for joins to their respective FROM clauses
+        Attaches each annotation to the relevant token in the query
         """
         brackets_stack = []  # for tracking (closed) brackets
         brackets_arr = []  # array of [index, index] 
@@ -106,7 +111,7 @@ class Annotator:
                         annotation = self.scans_dict[f"{token}_{appeared_tables[token]}"]  # postgres will add a counter to the (repeated) table name
                         appeared_tables[token] += 1
                     # attach annotations
-                    annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using a {annotation['scan_type']}."
+                    annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
                     if "filter" in annotation.keys():
                         annotation_text += f" The filter \"{annotation['filter']}\" is applied."
                     elif "cond" in annotation.keys():
@@ -146,7 +151,20 @@ class Annotator:
             
             elif current_clause == "UPDATE" or current_clause == "DELETE":  # for these, just attach scans, if any
                 if token in self.scans_dict.keys():
-                    self.annotations_dict[i] = self.scans_dict[token] # annotate current token with it's related scan annotation
+                    # need to check if we are attaching annotations to repeated table name without alias
+                    if token not in appeared_tables.keys():
+                        annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
+                        appeared_tables[token] = 1
+                    else:  # table name appeared twice - find postgres-added alias
+                        annotation = self.scans_dict[f"{token}_{appeared_tables[token]}"]  # postgres will add a counter to the (repeated) table name
+                        appeared_tables[token] += 1
+                    # attach annotations
+                    annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
+                    if "filter" in annotation.keys():
+                        annotation_text += f" The filter \"{annotation['filter']}\" is applied."
+                    elif "cond" in annotation.keys():
+                        annotation_text += f" The index condition \"{annotation['cond']}\" is applied."
+                    self.annotations_dict[i] = annotation_text
                     
             if token.upper() in self.sql_keywords:
                 current_clause = token.upper()
@@ -169,33 +187,47 @@ class Annotator:
             self.annotations_dict[bracket] = annotation
 
     """ Methods to handle each node type """
-    def handle_joins(self, plan):
+    def annotate_joins(self, plan):
+        name = plan["Node Type"]
+        join_conds = []
+        join_filter = ""
+
+        found_cond = False
+        found_filter = False
         for key in plan.keys():
             if "cond" in key.lower():
                 conds = plan[key].strip('()').split(' ') 
-                self.joins_arr.append({
-                        "name": plan["Node Type"] + " with condition: \"" + re.sub('[()]', '', plan[key]) + "\"", 
-                        "conds": [conds[0], conds[-1]] # ignore operators
-                    })
-                return
+                name += " with condition: \"" + re.sub('[()]', '', plan[key]) + "\""
+                join_conds = [conds[0], conds[-1]] # ignore operators
+                found_cond = True
+                if found_cond and found_filter:
+                    break
+                # self.joins_arr.append({
+                #         "name": plan["Node Type"] + " with condition: \"" + re.sub('[()]', '', plan[key]) + "\"", 
+                #         "conds": [conds[0], conds[-1]] # ignore operators
+                #     })
+            if "Join Filter" == key:
+                if name == plan["Node Type"]:  # no join cond (or not yet added)
+                    name += f" with join filter: \"{plan[key][1:-1]}\""  # remove enclosing brackets
+                else:  # join cond added
+                    name += f" and join filter: \"{plan[key][1:-1]}\""  # remove enclosing brackets
 
         self.joins_arr.append({
-                        "name": plan["Node Type"], 
-                        "conds": []
+                        "name": name, 
+                        "conds": join_conds,
+                        "filter": join_filter
                     })
 
-    def __get_alias(self, plan):  # helper method to return alias of a table, if it exists
-        alias = ""
-        if plan["Alias"] != plan["Relation Name"]:
-            alias = f" (alias \"{plan['Alias']}\")"
-
-        return alias
-
-    def handle_scans(self, plan):
+    def annotate_scans(self, plan):
         annotation = {}
         annotation["scan_type"] = plan["Node Type"]
         annotation["name"] = plan["Relation Name"]
-        annotation["alias"] = self.__get_alias(plan)
+
+        if plan["Alias"] != plan["Relation Name"]:
+            annotation["alias"] = f" (alias \"{plan['Alias']}\")"
+        else:
+            annotation["alias"] = ""
+        
         if "Filter" in plan:
             annotation["filter"] = plan['Filter'][1:-1]
         elif "Index Cond" in plan:
@@ -203,89 +235,32 @@ class Annotator:
         self.scans_dict[plan["Alias"]] = annotation
 
     """ Other Nodes """
-    def result(self, plan):
-        pass
-
-    def project_set(self, plan):
-        pass
-
-    def modify_table(self, plan):
-        pass
-
-    def append(self, plan):
-        pass
-
-    def merge_append(self, plan):
-        pass
-
-    def recursive_union(self, plan):
-        pass
-
-    def bitmap_and(self, plan):
-        pass
-
-    def bitmap_or(self, plan):
-        pass
-
-    def gather(self, plan):
-        pass
-
-    def gather_merge(self, plan):
-        pass
-
-    def materialize(self, plan):
-        pass
-
-    def memoize(self, plan):
-        pass
-
-    def sort(self, plan):
+    def annotate_sort(self, plan):
         annotation = f"This sort is performed with sort key(s) \"{', '.join(plan['Sort Key'])}\"."
         if "Sort Method" in plan:
             annotation += f" The sort method is \"{plan['Sort Method']}\"."
         self.sorts_arr.append(annotation)
 
-    def incremental_sort(self, plan):
+    def annotate_incremental_sort(self, plan):
         annotation = f"This sort is performed with sort key(s) \"{', '.join(plan['Sort Key'])}\"."
         if "Sort Method" in plan:
             annotation += f" The sort method is \"{plan['Sort Method']}\"."
         self.sorts_arr.append(annotation)
 
-    def group(self, plan):
-        pass
-
-    def aggregate(self, plan):
+    def annotate_aggregate(self, plan):
         annotation = f"This aggregation is performed with the strategy \"{plan['Strategy']}\"."
         if "Filter" in plan:
             annotation += f" The filter \"{plan['Filter']}\" is applied."
         self.aggregates_arr.append(annotation)
 
-    def groupaggregate(self, plan):
+    def annotate_groupaggregate(self, plan):
         annotation = f"This aggregation is performed using GroupAggregate and with the strategy \"{plan['Strategy']}\"."
         if "Filter" in plan:
             annotation += f" The filter \"{plan['Filter']}\" is applied."
         self.aggregates_arr.append(annotation)
 
-    def hashaggregate(self, plan):
+    def annotate_hashaggregate(self, plan):
         annotation = f"This aggregation is performed using HashAggregate and with the strategy \"{plan['Strategy']}\"."
         if "Filter" in plan:
             annotation += f" The filter \"{plan['Filter']}\" is applied."
         self.aggregates_arr.append(annotation)
-
-    def window_agg(self, plan):
-        pass
-
-    def unique(self, plan):
-        pass
-
-    def set_op(self, plan):
-        pass
-
-    def lock_rows(self, plan):
-        pass
-
-    def limit(self, plan):
-        pass
-
-    def hash(self, plan):
-        pass
