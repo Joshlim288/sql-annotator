@@ -32,10 +32,10 @@ class WelcomeScreen(QDialog):
     def __init__(self):
         super(WelcomeScreen, self).__init__()
         loadUi(os.path.join(os.path.dirname(__file__), 'WelcomeScreen.ui'), self)
-        self.loadDatabaseButton.clicked.connect(self.validateLogin)
+        self.loadDatabaseButton.clicked.connect(self.validate_login)
         self.quitButton.clicked.connect(self.quit)
 
-    def validateLogin(self):
+    def validate_login(self):
         self.username = self.username_input.toPlainText()
         self.password = self.password_input.text()
         self.host = self.host_input.toPlainText()
@@ -49,6 +49,7 @@ class WelcomeScreen(QDialog):
             widgetStack.addWidget(queryScreen)
             widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
         except Exception as e:
+            print(e)
             # Load ErrorScreen if unsuccessful
             error_screen = ErrorScreen()
             widgetStack.addWidget(error_screen)
@@ -80,9 +81,9 @@ class ErrorScreen(QDialog):
     def __init__(self):
         super(ErrorScreen, self).__init__()
         loadUi(os.path.join(os.path.dirname(__file__), 'ErrorScreen.ui'), self)
-        self.backButton.clicked.connect(self.goToWelcomeScreen)
+        self.backButton.clicked.connect(self.goto_welcome_screen)
 
-    def goToWelcomeScreen(self):
+    def goto_welcome_screen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
 
 
@@ -94,14 +95,14 @@ class QueryScreen(QDialog):
         self.processor = processor
         self.annotator = annotator
 
-        self.submitButton.clicked.connect(self.clickSubmit)
-        self.backButton.clicked.connect(self.goToWelcomeScreen)
+        self.submitButton.clicked.connect(self.click_submit)
+        self.backButton.clicked.connect(self.goto_welcome_screen)
 
         self.highlighter = Highlighter()
         self.highlighter.setDocument(self.queryInput.document())
-        self.setUpEditor()
+        self.set_up_editor()
 
-    def setUpEditor(self):
+    def set_up_editor(self):
         # Formatting of keywords
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(Qt.darkMagenta)
@@ -119,13 +120,13 @@ class QueryScreen(QDialog):
         pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
         self.highlighter.add_mapping(pattern, aggregate_format)
 
-    def clickSubmit(self):
+    def click_submit(self):
         self.text = self.queryInput.toPlainText()
         try:
             annotated_dict, tokenized_query = get_annotated_query(self.text, self.processor, self.annotator)
             if annotated_dict:
                 self.errorMessage.setText("")
-                self.goToQEPScreen(annotated_dict, list(enumerate(tokenized_query)))
+                self.goto_QEP_screen(annotated_dict, list(enumerate(tokenized_query)))
             else:
                 # Query has no annotations 
                 self.errorMessage.setStyleSheet("color: #4BB543")
@@ -136,10 +137,10 @@ class QueryScreen(QDialog):
             self.errorMessage.setStyleSheet("color: #FF0000")
             self.errorMessage.setText(str(error_message))
 
-    def goToWelcomeScreen(self):
+    def goto_welcome_screen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
 
-    def goToQEPScreen(self, annotatedDict, tokenizedQuery):
+    def goto_QEP_screen(self, annotatedDict, tokenizedQuery):
         qepScreen = QEPScreen(annotatedDict, tokenizedQuery)
         widgetStack.addWidget(qepScreen)
         widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
@@ -155,8 +156,8 @@ class TableWidget(QTableWidget):
         self.viewport().installEventFilter(self)
 
         # Fixing height and width for table widget
-        self.setFixedHeight(200)
-        self.setFixedWidth(360)
+        self.setFixedHeight(261)
+        self.setFixedWidth(371)
 
         # Formatting of table widget items
         self.horizontalHeader().hide()
@@ -196,36 +197,36 @@ class QEPScreen(QDialog):
         self.annotated_dict = annotated_dict
         self.tokenized_query = tokenized_query
         self.highlighter = Highlighter()
-        self.colorAllocation = {}
-        self.currentColor = {}
+        self.color_allocation = {}
+        self.current_color = {}
         loadUi(os.path.join(os.path.dirname(__file__), 'QEPScreen.ui'),self)
 
         # Initialise table, annotation and highlighter
         self.table = TableWidget(len(self.annotated_dict), 1, self)
-        self.table.move(370,110)
-        self.displayAnnotation()
-        self.backButton.clicked.connect(self.goToQueryScreen)
+        self.table.move(440,120)
+        self.display_annotation()
+        self.backButton.clicked.connect(self.goto_query_screen)
         self.highlighter.setDocument(self.queryText.document())
-        self.setUpEditor()
+        self.set_up_editor()
         
     # When user hovers over an item in the table
-    def handleItemEntered(self, item):
+    def handle_item_entered(self, item):
         index = item.row()
-        tuple_list = list(self.colorAllocation.items())
-        if index < len(self.colorAllocation):
+        tuple_list = list(self.color_allocation.items())
+        if index < len(self.color_allocation):
             key_value = tuple_list[index]
             new = {}
             new[key_value[0]] = key_value[1]
-            self.currentColor = new.copy()
-            self.displayQuery()
+            self.current_color = new.copy()
+            self.display_query()
 
     # When user stops hovering over an item in the table
-    def handleItemExited(self, item):
+    def handle_item_exited(self, item):
         item.setBackground(QTableWidgetItem().background())
-        self.currentColor = copy.deepcopy(self.colorAllocation)
-        self.displayQuery()
+        self.current_color = copy.deepcopy(self.color_allocation)
+        self.display_query()
 
-    def setUpEditor(self):
+    def set_up_editor(self):
         # Formatting of keywords
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(Qt.darkMagenta)
@@ -243,16 +244,17 @@ class QEPScreen(QDialog):
         pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
         self.highlighter.add_mapping(pattern, aggregate_format)
 
-    def goToQueryScreen(self):
+    def goto_query_screen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
 
-    def displayQuery(self):
+    def display_query(self):
 
         self.queryText.clear()
         indent_amount = 0
         tempString = ""
-        tokens_to_newline = ["select", "where", "from", "group", "order", "SELECT", "WHERE", "FROM", "GROUP", "ORDER"]
-        # Iterate through query tokens and highlight if necessary by checking colorAllocation
+        tokens_to_newline = ["select", "where", "from", "group", "order", "set", "SELECT", "WHERE", "FROM", "GROUP", "ORDER", "SET"]
+        
+        # Iterate through query tokens and highlight if necessary by checking color_allocation
         for idx, value in enumerate(self.tokenized_query):
             
             # "&lt;" needs to be used for printing "<" in HTML
@@ -262,13 +264,13 @@ class QEPScreen(QDialog):
                 # Check if token needs to be highlighted
                 highlight = ""
                 
-                for key in self.currentColor.keys():
+                for key in self.current_color.keys():
                     if isinstance(key, tuple):
                         if value[0] in key:
-                            highlight = self.currentColor[key]
+                            highlight = self.current_color[key]
                             break
                     elif value[0] == key:
-                        highlight = self.currentColor[key]
+                        highlight = self.current_color[key]
                         break
 
                 if highlight != "":
@@ -299,43 +301,47 @@ class QEPScreen(QDialog):
         # Print out last line of query
         self.queryText.appendHtml(tempString)
 
-    def displayAnnotation(self):
+    def display_annotation(self):
 
-        colorArray= ["#62EC0A", "#BD9FDF", "#FFFF00", "#ED6A13" ,"#59F0FF", "#12EC83", "#EDAF13", "#EC0A2F", "#DE9EA3", "#423FDA", "#DE9EC1"]
+        color_array= ["#62EC0A", "#BD9FDF", "#FFFF00", "#ED6A13" ,"#59F0FF", "#12EC83", "#EDAF13", "#EC0A2F", "#DE9EA3", "#423FDA", "#DE9EC1"]
         counter = 0
-        arrayIndex = 0
+        array_index = 0
 
         # Iterate through annotations, set the colors for each annotation, and add to table
         for key, value in self.annotated_dict.items():
 
             if (key != "cost"):
-                value = value.replace("<", "&lt;") # "&lt;" needs to be used for printing "<" in HTML
-                self.colorAllocation[key] = colorArray[arrayIndex]
-                item = QTableWidgetItem(str(arrayIndex+1) + ") " + value)
-                item.setForeground(QBrush(QColor(colorArray[arrayIndex])))
+                if ("alias" in value):
+                    self.color_allocation[(key - 1, key)] = color_array[array_index]
+                else:
+                    self.color_allocation[key] = color_array[array_index]
+                item = QTableWidgetItem(str(array_index+1) + ") " + value)
+                item.setForeground(QBrush(QColor(color_array[array_index])))
                 self.table.setItem(counter, 0, item)
-                arrayIndex += 1
+                array_index += 1
             else:
                 item = QTableWidgetItem(value)
                 item.setForeground(QBrush(QColor("#FFFFFF")))
                 self.table.setItem(counter, 0, item)
 
             counter += 1
-        
+
         # Set up mouse tracking and onHover functions
-        self.currentColor = copy.deepcopy(self.colorAllocation)
+        self.current_color = copy.deepcopy(self.color_allocation)
         self.table.setMouseTracking(True)
-        self.table.itemEntered.connect(self.handleItemEntered)
-        self.table.itemExited.connect(self.handleItemExited)
-        self.displayQuery()
+        self.table.itemEntered.connect(self.handle_item_entered)
+        self.table.itemExited.connect(self.handle_item_exited)
+        self.display_query()
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     welcome = WelcomeScreen()
     widgetStack = QtWidgets.QStackedWidget()
     widgetStack.addWidget(welcome)
-    widgetStack.setFixedHeight(454)
-    widgetStack.setFixedWidth(758)
+    # widgetStack.setFixedHeight(454)
+    # widgetStack.setFixedWidth(758)
+    widgetStack.setFixedHeight(550)
+    widgetStack.setFixedWidth(850)
     widgetStack.show()
     try:
         sys.exit(app.exec_())
