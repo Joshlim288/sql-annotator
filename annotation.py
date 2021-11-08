@@ -106,7 +106,7 @@ class Annotator:
                         annotation = self.scans_dict[f"{token}_{appeared_tables[token]}"]  # postgres will add a counter to the (repeated) table name
                         appeared_tables[token] += 1
                     # attach annotations
-                    annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using a {annotation['scan_type']}."
+                    annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
                     if "filter" in annotation.keys():
                         annotation_text += f" The filter \"{annotation['filter']}\" is applied."
                     elif "cond" in annotation.keys():
@@ -146,7 +146,20 @@ class Annotator:
             
             elif current_clause == "UPDATE" or current_clause == "DELETE":  # for these, just attach scans, if any
                 if token in self.scans_dict.keys():
-                    self.annotations_dict[i] = self.scans_dict[token] # annotate current token with it's related scan annotation
+                    # need to check if we are attaching annotations to repeated table name without alias
+                    if token not in appeared_tables.keys():
+                        annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
+                        appeared_tables[token] = 1
+                    else:  # table name appeared twice - find postgres-added alias
+                        annotation = self.scans_dict[f"{token}_{appeared_tables[token]}"]  # postgres will add a counter to the (repeated) table name
+                        appeared_tables[token] += 1
+                    # attach annotations
+                    annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
+                    if "filter" in annotation.keys():
+                        annotation_text += f" The filter \"{annotation['filter']}\" is applied."
+                    elif "cond" in annotation.keys():
+                        annotation_text += f" The index condition \"{annotation['cond']}\" is applied."
+                    self.annotations_dict[i] = annotation_text
                     
             if token.upper() in self.sql_keywords:
                 current_clause = token.upper()
