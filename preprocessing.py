@@ -5,10 +5,6 @@ import psycopg2
 class QueryProcessor:
 
     def __init__(self, username, password, host, database):
-        # self.username = username
-        # self.password = password
-        # self.host = host
-        # self.database = database
         conn = psycopg2.connect(
             dbname=database,
             user=username,
