@@ -36,9 +36,8 @@ class WelcomeScreen(QDialog):
             widgetStack.addWidget(queryScreen)
             widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
         except Exception as e:
-            print(e)
             # Load ErrorScreen if unsuccessful
-            error_screen = ErrorScreen()
+            error_screen = ErrorScreen(e)
             widgetStack.addWidget(error_screen)
             widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
 
@@ -65,10 +64,11 @@ class ErrorScreen(QDialog):
     The screen that shows the error window for invalid input in the welcome screen
     '''
 
-    def __init__(self):
+    def __init__(self, error_message: str):
         super(ErrorScreen, self).__init__()
         loadUi(os.path.join(os.path.dirname(__file__), 'ErrorScreen.ui'), self)
         self.backButton.clicked.connect(self.goto_welcome_screen)
+        self.errorMessage.setText(str(error_message))
 
     def goto_welcome_screen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
@@ -341,6 +341,7 @@ class GUI():
     
     #Initialise with WelcomeScreen and set width/height
     welcome = WelcomeScreen()
+    widgetStack.setWindowTitle("SQL Query Annotator")
     widgetStack.addWidget(welcome)
     widgetStack.setFixedHeight(550)
     widgetStack.setFixedWidth(850)

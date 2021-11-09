@@ -154,9 +154,9 @@ font: 14pt &quot;MS Shell Dlg 2&quot;</string>
   <widget class="QLabel" name="errorMessage">
    <property name="geometry">
     <rect>
-     <x>250</x>
+     <x>180</x>
      <y>160</y>
-     <width>421</width>
+     <width>491</width>
      <height>131</height>
     </rect>
    </property>
@@ -341,7 +341,13 @@ font: 14pt &quot;MS Shell Dlg 2&quot;</string>
     <string notr="true">font: 16pt &quot;MS Shell Dlg 2&quot;; color:rgb(255, 255, 255)</string>
    </property>
    <property name="text">
-    <string>The input is invalid, please try again :)</string>
+    <string/>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
    </property>
   </widget>
  </widget>
