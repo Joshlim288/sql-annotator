@@ -19,7 +19,7 @@ class Annotator:
         }
 
         # SQL keywords to look out for
-        self.sql_keywords = ["FROM", "SELECT", "ORDER", "GROUP", "UPDATE", "DELETE"]
+        self.sql_keywords = ["FROM", "SELECT", "ORDER", "GROUP", "UPDATE", "DELETE", "HAVING"]
         self.aggregates = ("AVG", "COUNT", "MAX", "MIN", "SUM")  # need to be a tuple to use 'in'
 
     def annotate(self, query_plan, tokenized_query):
@@ -130,8 +130,8 @@ class Annotator:
                             self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
                             break
 
-            elif current_clause == "SELECT":  # attach aggregate annotations
-                if token.upper() in self.sql_keywords: # Finish annotation for the SELECT clause
+            elif current_clause == "SELECT" or current_clause == "HAVING":  # attach aggregate annotations
+                if token.upper() in self.sql_keywords or i == len(tokenized_query) - 1: # Finish annotation for the SELECT clause
                     current_clause = token.upper()
                     for j in range(clause_index, i):  
                         # check if tokens from the SELECT clause to this current token are aggregate functions
@@ -219,6 +219,9 @@ class Annotator:
                     })
 
     def annotate_scans(self, plan):
+        if "Relation Name" not in plan:  # to ignore subquery scans, etc
+            return
+        
         annotation = {}
         annotation["scan_type"] = plan["Node Type"]
         annotation["name"] = plan["Relation Name"]
