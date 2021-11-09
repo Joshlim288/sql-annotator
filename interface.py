@@ -14,6 +14,13 @@ from preprocessing import QueryProcessor
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling) # DPI Support for high DPI screens
 app = QApplication(sys.argv)
 widgetStack = QtWidgets.QStackedWidget()
+sample_queries = ["SELECT * \nFROM customer, nation, supplier \nWHERE nation.n_nationkey = 0",
+"SELECT * \nFROM customer c, orders o \nWHERE c.c_custkey = o.o_custkey",
+"SELECT AVG(c_acctbal) \nFROM customer \nWHERE c_custkey < 5",
+"UPDATE customer \nSET c_name = 'tom' \nWHERE c_custkey = 1",
+"SELECT c_nationkey, c_mktsegment, SUM(c_acctbal) \nFROM customer \nWHERE c_custkey < 10 \nGROUP BY c_nationkey, c_mktsegment",
+"SELECT * \nFROM customer c, lineitem l1 \nWHERE c.c_custkey = ( \n    SELECT o_orderkey \n    FROM orders, lineitem l2 \n    WHERE o_custkey = 4 and l2.l_partkey = 5\n) and l1.l_suppkey = 7",
+"SELECT * \nFROM customer c, lineitem l1 \nWHERE c.c_custkey = ( \n    SELECT o_orderkey \n    FROM orders \n    WHERE o_custkey = 4 and l1.l_partkey = 5 \n) and l1.l_suppkey = ( \n    SELECT ps_suppkey \n    FROM partsupp \n    WHERE ps_availqty = 4 \n)"]
 
 class WelcomeScreen(QDialog):
     def __init__(self):
@@ -88,6 +95,14 @@ class QueryScreen(QDialog):
         self.highlighter = Highlighter()
         self.highlighter.setDocument(self.queryInput.document())
         self.set_up_editor()
+        self.comboBox.currentIndexChanged.connect(self.on_currentIndexChanged)
+
+    # On select of sample query, populate queryText with the query
+    def on_currentIndexChanged(self, ix):
+        combobox_index = self.comboBox.currentIndex()
+        if not combobox_index == 0:
+            self.queryInput.clear()
+            self.queryInput.appendPlainText(sample_queries[combobox_index-1])
 
     def set_up_editor(self):
         # Formatting of keywords
@@ -263,7 +278,7 @@ class QEPScreen(QDialog):
             
             # "&lt;" needs to be used for printing "<" in HTML
             if value[1] == "<":
-                token_to_add = "<font style='background-color: " + highlight + "'>" +  "&lt;" + "</font>"
+                token_to_add = "<font>&lt;</font>"
             else:
                 # Check if token needs to be highlighted
                 highlight = ""
@@ -294,11 +309,11 @@ class QEPScreen(QDialog):
                 if len(self.tokenized_query) == idx + 1: # Closing bracket is last token, append after newline
                     self.queryText.appendHtml(tempString)
                     tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
-                elif not self.tokenized_query[idx+1][1] == "from": # Closing bracket is from subplan, append after newline
+                elif self.tokenized_query[idx-2][1] == "(": # Closing bracket is from aggregate function, don't newline
+                    tempString += token_to_add + " "
+                else: # Closing bracket is from subplan, append after newline
                     self.queryText.appendHtml(tempString)
                     tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
-                else: # Closing bracket is from aggregate function, append without newline
-                    tempString += token_to_add + " "
             else:
                 tempString += token_to_add + " "
  
@@ -315,11 +330,14 @@ class QEPScreen(QDialog):
         for key, value in self.annotated_dict.items():
 
             if (key != "cost"):
-                if ("alias" in value):
+                if ("alias" in value): # Also highlight actual name
                     self.color_allocation[(key - 1, key)] = color_array[array_index]
-                else:
+                elif ("aggregation" in value): # Highlight entire aggregation
+                    self.color_allocation[(key, key+1, key+2, key+3)] = color_array[array_index]
+                else: # Highlight token as per normal
                     self.color_allocation[key] = color_array[array_index]
-                item = QTableWidgetItem(str(array_index+1) + ") " + value)
+
+                item = QTableWidgetItem("-> " + value)
                 item.setForeground(QBrush(QColor(color_array[array_index])))
                 self.table.setItem(counter, 0, item)
                 array_index += 1
