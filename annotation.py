@@ -29,6 +29,7 @@ class Annotator:
         self.aggregates_arr = []
         self.sorts_arr = []
         self.subplans_arr = []
+        self.alias_dict = {}  # keep track of aliases and the table they belong to
 
         self.annotations_dict = {}  # dictionary of {token: annotation}
 
@@ -36,15 +37,18 @@ class Annotator:
         self.prepare_annotations(query_plan)
         self.attach_annotations(tokenized_query)
         self.annotations_dict["cost"] = "Total cost of the query plan is: " + str([query_plan][0]["Total Cost"]) + "."
+        self.annotations_dict["alias"] = self.alias_dict
 
         # order annotations by token id
         ordered = OrderedDict()  
         token_ids = list(self.annotations_dict.keys())
         token_ids.remove("cost")  # not involved in sorting
+        token_ids.remove("alias")  # not involved in sorting too
         sort_key = lambda x: x if type(x) != tuple else x[0]  # if token_id is a tuple, then we compare using the 1st element of the tuple
         for token_id in sorted(token_ids, key=sort_key):
             ordered[token_id] = self.annotations_dict[token_id]
         ordered["cost"] = self.annotations_dict["cost"]
+        ordered["alias"] = self.annotations_dict["alias"]
         return ordered
 
     def prepare_annotations(self, query_plan):
@@ -108,8 +112,10 @@ class Annotator:
                         annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
                         appeared_tables[token] = 1
                     else:  # table name appeared twice - find postgres-added alias
-                        annotation = self.scans_dict[f"{token}_{appeared_tables[token]}"]  # postgres will add a counter to the (repeated) table name
+                        added_alias = f"{token}_{appeared_tables[token]}"  # postgres will add a counter to the (repeated) table name
+                        annotation = self.scans_dict[added_alias]  
                         appeared_tables[token] += 1
+                        self.alias_dict.pop(added_alias)  # not needed for annotation
                     # attach annotations
                     annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
                     if "filter" in annotation.keys():
@@ -226,8 +232,10 @@ class Annotator:
         annotation["scan_type"] = plan["Node Type"]
         annotation["name"] = plan["Relation Name"]
 
+        # table with no alias specified still has an alias - the table's name itself
         if plan["Alias"] != plan["Relation Name"]:
             annotation["alias"] = f" (alias \"{plan['Alias']}\")"
+            self.alias_dict[plan["Alias"]] = plan["Relation Name"]
         else:
             annotation["alias"] = ""
         
