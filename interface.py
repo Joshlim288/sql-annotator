@@ -14,6 +14,8 @@ from preprocessing import QueryProcessor
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling) # DPI Support for high DPI screens
 app = QApplication(sys.argv)
 widgetStack = QtWidgets.QStackedWidget()
+
+# Sample queries used for display in QueryScreen
 sample_queries = ["SELECT * \nFROM customer, nation, supplier \nWHERE nation.n_nationkey = 0",
 "SELECT * \nFROM customer c, orders o \nWHERE c.c_custkey = o.o_custkey",
 "SELECT AVG(c_acctbal) \nFROM customer \nWHERE c_custkey < 5",
@@ -67,9 +69,6 @@ class Highlighter(QSyntaxHighlighter):
                 self.setFormat(start, end-start, fmt)
 
 class ErrorScreen(QDialog):
-    ''' 
-    The screen that shows the error window for invalid input in the welcome screen
-    '''
 
     def __init__(self, error_message: str):
         super(ErrorScreen, self).__init__()
@@ -104,19 +103,23 @@ class QueryScreen(QDialog):
             self.queryInput.clear()
             self.queryInput.appendPlainText(sample_queries[combobox_index-1])
 
+    # Defines regex rules that will be used by Highlighter to format specific tokens
     def set_up_editor(self):
-        # Formatting of keywords
+
+        # General Keywords
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(Qt.darkMagenta)
         keyword_format.setFontWeight(QFont.Bold)
-        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b'
+        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b|\bvalues\b'
         self.highlighter.add_mapping(pattern, keyword_format)
 
+        # AND and OR
         and_format = QTextCharFormat()
         and_format.setForeground(Qt.blue)
         pattern = r'\band\b|\bor\b'
         self.highlighter.add_mapping(pattern, and_format)
 
+        # Aggregate keywords
         aggregate_format = QTextCharFormat()
         aggregate_format.setForeground(Qt.red)
         pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
@@ -143,7 +146,7 @@ class QueryScreen(QDialog):
         self.text = self.queryInput.toPlainText()
         try:
             annotated_dict, tokenized_query = self.get_annotated_query(self.text, self.processor, self.annotator)
-            if annotated_dict:
+            if len(annotated_dict) != 2:
                 self.errorMessage.setText("")
                 self.goto_QEP_screen(annotated_dict, list(enumerate(tokenized_query)))
             else:
@@ -165,6 +168,8 @@ class QueryScreen(QDialog):
         widgetStack.setCurrentIndex(widgetStack.currentIndex()+1)
 
 class TableWidget(QTableWidget):
+    
+    # Define signals used for hovering over an annotation
     cellExited = pyqtSignal(int, int)
     itemExited = pyqtSignal(QTableWidgetItem)
 
@@ -191,6 +196,7 @@ class TableWidget(QTableWidget):
         self.setFocusPolicy(Qt.NoFocus)
         self.setSelectionMode(QAbstractItemView.NoSelection)
 
+    # Defines event filter to allow for tracking of mouse hover over a specific annotation
     def eventFilter(self, widget, event):
         if widget is self.viewport():
             index = self._last_index
@@ -216,8 +222,16 @@ class QEPScreen(QDialog):
         self.annotated_dict = annotated_dict
         self.tokenized_query = tokenized_query
         self.highlighter = Highlighter()
+
+        '''
+        Dictionaries that hold the mapping of an annotation to its highlight color
+        color_allocation holds the mapping of all annotations for the query
+        current_color only holds the mapping of the annotation that the mouse is hovering on
+        current_color is copied from color_allocation if mouse is not hovering over any annotation
+        '''
         self.color_allocation = {}
         self.current_color = {}
+
         loadUi(os.path.join(os.path.dirname(__file__), 'QEPScreen.ui'),self)
 
         # Initialise table, annotation and highlighter
@@ -245,19 +259,23 @@ class QEPScreen(QDialog):
         self.current_color = copy.deepcopy(self.color_allocation)
         self.display_query()
 
+    # Defines regex rules that will be used by Highlighter to format specific tokens
     def set_up_editor(self):
-        # Formatting of keywords
+
+        # General Keywords
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(Qt.darkMagenta)
         keyword_format.setFontWeight(QFont.Bold)
-        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b'
+        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b|\bvalues\b'
         self.highlighter.add_mapping(pattern, keyword_format)
 
+        # AND and OR
         and_format = QTextCharFormat()
         and_format.setForeground(Qt.blue)
         pattern = r'\band\b|\bor\b'
         self.highlighter.add_mapping(pattern, and_format)
 
+        # Aggregate keywords
         aggregate_format = QTextCharFormat()
         aggregate_format.setForeground(Qt.red)
         pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
@@ -268,14 +286,19 @@ class QEPScreen(QDialog):
 
     def display_query(self):
 
-        self.queryText.clear()
+        self.queryText.clear() #Clear previous query if any
+        ending_bracket_pos=[]
         indent_amount = 0
         tempString = ""
-        tokens_to_newline = ["select", "where", "from", "group", "order", "set", "SELECT", "WHERE", "FROM", "GROUP", "ORDER", "SET"]
-        
-        # Iterate through query tokens and highlight if necessary by checking color_allocation
+        tokens_to_newline = ["select", "where", "from", "group", "order", "set", "values", "insert", "SELECT", "WHERE", "FROM", "GROUP", "ORDER", "SET", "VALUES", "INSERT"]
+        aggregation_keywords = ["count", "avg", "max", "min", "sum", "COUNT", "AVG", "MAX", "MIN", "SUM"]
+
         for idx, value in enumerate(self.tokenized_query):
-            
+
+            '''
+            === Step 1: Check if token needs to be highlighted by referencing current_color dictionary ===
+            Generates the corresponding HTML code based on whether token is highlighted
+            '''
             # "&lt;" needs to be used for printing "<" in HTML
             if value[1] == "<":
                 token_to_add = "<font>&lt;</font>"
@@ -297,29 +320,53 @@ class QEPScreen(QDialog):
                 else:
                     token_to_add = "<font>" + value[1] + "</font>"
 
+            '''
+            === Step 2: Formatting and print of tokens to GUI ===
+            Newline is performed when a keyword such as "SELECT", "WHERE", etc is read
+            Indenting for subplans is done by keeping track of indent_amount based on "(" and ")" tokens
+            After reaching a ")" token, there are three scenarios:
+                    1) End of a subplan -> Newline after this token
+                    2) End of a aggregation function -> Do not newline after this token
+                    3) End of a VALUES keyword -> Do not newline after this token
+            For cases 2 and 3, right parenthesis' position is placed in ending_bracket_pos to indicate newline not needed
+            '''
+            if value[1] in aggregation_keywords or value[1] == "values" or value[1] == "VALUES":
+                if value[1] == "values" or value[1] == "VALUES":
+                    self.queryText.appendHtml(tempString)
+                    tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+                else:
+                    tempString += token_to_add + " "
+                i = 1
+                while True:
+                    if self.tokenized_query[idx+i][1] == ")":
+                        ending_bracket_pos.append(idx+i)
+                        break
+                    i += 1 
+
             # Once a new keyword appears, print out previous tokens and start newline
-            if value[1] in tokens_to_newline:
+            elif value[1] in tokens_to_newline:
                 self.queryText.appendHtml(tempString)
                 tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+
             elif value[1] == "(":
                 tempString += token_to_add + " "
                 indent_amount += 4
+
             elif value[1] == ")":
                 indent_amount -= 4
-                if len(self.tokenized_query) == idx + 1: # Closing bracket is last token, append after newline
-                    self.queryText.appendHtml(tempString)
-                    tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
-                elif self.tokenized_query[idx-2][1] == "(": # Closing bracket is from aggregate function, don't newline
+                if idx in ending_bracket_pos : # Closing bracket is from aggregate function, don't newline
                     tempString += token_to_add + " "
                 else: # Closing bracket is from subplan, append after newline
                     self.queryText.appendHtml(tempString)
                     tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+
             else:
                 tempString += token_to_add + " "
  
         # Print out last line of query
         self.queryText.appendHtml(tempString)
 
+    # Displays annotation in the table widget, and setting up on colors for each annotation
     def display_annotation(self):
 
         color_array= ["#62EC0A", "#BD9FDF", "#FFFF00", "#ED6A13" ,"#59F0FF", "#12EC83", "#EDAF13", "#EC0A2F", "#DE9EA3", "#423FDA", "#DE9EC1"]
@@ -329,6 +376,11 @@ class QEPScreen(QDialog):
         # Iterate through annotations, set the colors for each annotation, and add to table
         for key, value in self.annotated_dict.items():
 
+            '''
+            If an alias is to be highlighted, a check is performed to see if there is the alias is given by the user or by the DBMS
+            If the alias is given by the user, then the name of the relation before it should be highlighted too
+            If an aggregation is to be highlighted, the entire aggregation function should be highlighted (until the right bracket)
+            '''
             if (key != "cost"):
                 if ("alias" in value): # Check if alias is generated by user or by Postgres
                     if self.tokenized_query[key][1] in self.annotated_dict["alias"].keys(): # Alias from user, highlight token before this
