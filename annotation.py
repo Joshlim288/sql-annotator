@@ -102,7 +102,7 @@ class Annotator:
                     if clause_index in self.annotations_dict.keys():
                         self.annotations_dict[clause_index] = "This join is carried out with a " + self.annotations_dict[clause_index] + "."
 
-                elif token in self.scans_dict.keys(): # attach scans to the index of their alias names within FROM clause
+                if token in self.scans_dict.keys(): # attach scans to the index of their alias names within FROM clause
                     # need to check if we are attaching annotations to repeated table name without alias
                     if token not in appeared_tables.keys():
                         annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
