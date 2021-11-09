@@ -11,22 +11,9 @@ from PyQt5.QtGui import QFont, QSyntaxHighlighter, QTextCharFormat, QBrush, QCol
 from annotation import Annotator
 from preprocessing import QueryProcessor
 
-def get_annotated_query(query, processor, annotator):
-    '''
-    Gets annotations for the input query
-    :param query: 
-    SQL query to be analyzed
-    :returns tup: 
-    tuple[0] = dictionary where the keys represent a token's index, and the value represents the annotation for that token
-    tuple[1]= list of tokens that the query has been split into
-    '''
-    try:
-        query_plan = processor.process_query(query)
-        tokenized_query = processor.tokenize_query(query)
-        annotation_dict = annotator.annotate(query_plan, tokenized_query)
-        return annotation_dict, tokenized_query
-    except Exception as e:
-        return e
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling) # DPI Support for high DPI screens
+app = QApplication(sys.argv)
+widgetStack = QtWidgets.QStackedWidget()
 
 class WelcomeScreen(QDialog):
     def __init__(self):
@@ -120,10 +107,27 @@ class QueryScreen(QDialog):
         pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
         self.highlighter.add_mapping(pattern, aggregate_format)
 
+    def get_annotated_query(self, query, processor, annotator):
+        '''
+        Gets annotations for the input query
+        :param query: 
+        SQL query to be analyzed
+        :returns tup: 
+        tuple[0] = dictionary where the keys represent a token's index, and the value represents the annotation for that token
+        tuple[1]= list of tokens that the query has been split into
+        '''
+        try:
+            query_plan = processor.process_query(query)
+            tokenized_query = processor.tokenize_query(query)
+            annotation_dict = annotator.annotate(query_plan, tokenized_query)
+            return annotation_dict, tokenized_query
+        except Exception as e:
+            return e
+
     def click_submit(self):
         self.text = self.queryInput.toPlainText()
         try:
-            annotated_dict, tokenized_query = get_annotated_query(self.text, self.processor, self.annotator)
+            annotated_dict, tokenized_query = self.get_annotated_query(self.text, self.processor, self.annotator)
             if annotated_dict:
                 self.errorMessage.setText("")
                 self.goto_QEP_screen(annotated_dict, list(enumerate(tokenized_query)))
@@ -133,7 +137,7 @@ class QueryScreen(QDialog):
                 self.errorMessage.setText("Query executed successfully, but has no annotations for viewing!")
         except Exception as e:
             # Query execution has error, display error message
-            error_message = get_annotated_query(self.text, self.processor, self.annotator)
+            error_message = self.get_annotated_query(self.text, self.processor, self.annotator)
             self.errorMessage.setStyleSheet("color: #FF0000")
             self.errorMessage.setText(str(error_message))
 
@@ -332,17 +336,16 @@ class QEPScreen(QDialog):
         self.table.itemEntered.connect(self.handle_item_entered)
         self.table.itemExited.connect(self.handle_item_exited)
         self.display_query()
-        
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
+
+class GUI():
+    
+    #Initialise with WelcomeScreen and set width/height
     welcome = WelcomeScreen()
-    widgetStack = QtWidgets.QStackedWidget()
     widgetStack.addWidget(welcome)
-    # widgetStack.setFixedHeight(454)
-    # widgetStack.setFixedWidth(758)
     widgetStack.setFixedHeight(550)
     widgetStack.setFixedWidth(850)
     widgetStack.show()
+
     try:
         sys.exit(app.exec_())
     except:
