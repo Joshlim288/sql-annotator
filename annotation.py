@@ -130,9 +130,9 @@ class Annotator:
                         self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"] + ", followed by a " + self.annotations_dict[clause_index]
                     table_counter += 1
                 
-                if len(self.joins_arr) > 0:
+                elif len(self.joins_arr) > 0:
                     for condName in self.joins_arr[0]["conds"]:
-                        if condName in token and table_counter == 1: # if part of a condition is found in a where clause and only one table in the from clause
+                        if (condName in token or token in condName) and table_counter == 1: # if part of a condition is found in a where clause and only one table in the from clause
                             self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
                             break
 
