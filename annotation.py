@@ -34,7 +34,7 @@ class Annotator:
         self.annotations_dict = {}  # dictionary of {token: annotation}
 
         # generate the annotations - i.e. prepare annotations_dict
-        self.prepare_annotations(query_plan)
+        self.generate_annotations(query_plan)
         self.attach_annotations(tokenized_query)
         self.annotations_dict["cost"] = "Total cost of the query plan is: " + str([query_plan][0]["Total Cost"]) + "."
         self.annotations_dict["alias"] = self.alias_dict
@@ -51,7 +51,7 @@ class Annotator:
         ordered["alias"] = self.annotations_dict["alias"]
         return ordered
 
-    def prepare_annotations(self, query_plan):
+    def generate_annotations(self, query_plan):
         """
         Use DFS to prepare annotations for individual plans.
         """
@@ -100,7 +100,7 @@ class Annotator:
         while i < len(tokenized_query):
             token = tokenized_query[i]
             if current_clause == "FROM": # inside a FROM clause
-                if (token.upper() in self.sql_keywords or i == len(tokenized_query)-1): # Finish annotation for the FROM clause
+                if token.upper() in self.sql_keywords or i == len(tokenized_query)-1: # Finish annotation for the FROM clause
                     current_clause = token.upper()
                     table_counter = 0
                     if clause_index in self.annotations_dict.keys():
@@ -132,7 +132,7 @@ class Annotator:
                 
                 if len(self.joins_arr) > 0:
                     for condName in self.joins_arr[0]["conds"]:
-                        if (condName in token and table_counter == 1): # if part of a condition is found in a where clause and only one table in the from clause
+                        if condName in token and table_counter == 1: # if part of a condition is found in a where clause and only one table in the from clause
                             self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
                             break
 
