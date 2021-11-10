@@ -57,6 +57,25 @@ class Highlighter(QSyntaxHighlighter):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._mapping = {}
+
+        # General Keywords
+        keyword_format = QTextCharFormat()
+        keyword_format.setForeground(Qt.darkMagenta)
+        keyword_format.setFontWeight(QFont.Bold)
+        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b|\bvalues\b'
+        self.add_mapping(pattern, keyword_format)
+
+        # AND and OR
+        and_format = QTextCharFormat()
+        and_format.setForeground(Qt.blue)
+        pattern = r'\band\b|\bor\b'
+        self.add_mapping(pattern, and_format)
+
+        # Aggregate keywords
+        aggregate_format = QTextCharFormat()
+        aggregate_format.setForeground(Qt.red)
+        pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
+        self.add_mapping(pattern, aggregate_format)
     
     def add_mapping(self, pattern, pattern_format):
         self._mapping[pattern] = pattern_format
@@ -94,7 +113,6 @@ class QueryScreen(QDialog):
 
         self.highlighter = Highlighter()
         self.highlighter.setDocument(self.queryInput.document())
-        self.set_up_editor()
         
     # On select of sample query, populate queryText with the query
     def on_activated(self):
@@ -102,28 +120,6 @@ class QueryScreen(QDialog):
         if not combobox_index == 0:
             self.queryInput.clear()
             self.queryInput.appendPlainText(sample_queries[combobox_index-1])
-
-    # Defines regex rules that will be used by Highlighter to format specific tokens
-    def set_up_editor(self):
-
-        # General Keywords
-        keyword_format = QTextCharFormat()
-        keyword_format.setForeground(Qt.darkMagenta)
-        keyword_format.setFontWeight(QFont.Bold)
-        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b|\bvalues\b'
-        self.highlighter.add_mapping(pattern, keyword_format)
-
-        # AND and OR
-        and_format = QTextCharFormat()
-        and_format.setForeground(Qt.blue)
-        pattern = r'\band\b|\bor\b'
-        self.highlighter.add_mapping(pattern, and_format)
-
-        # Aggregate keywords
-        aggregate_format = QTextCharFormat()
-        aggregate_format.setForeground(Qt.red)
-        pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
-        self.highlighter.add_mapping(pattern, aggregate_format)
 
     def get_annotated_query(self, query, processor, annotator):
         '''
@@ -240,7 +236,6 @@ class QEPScreen(QDialog):
         self.display_annotation()
         self.backButton.clicked.connect(self.goto_query_screen)
         self.highlighter.setDocument(self.queryText.document())
-        self.set_up_editor()
         
     # When user hovers over an item in the table
     def handle_item_entered(self, item):
@@ -258,28 +253,6 @@ class QEPScreen(QDialog):
         item.setBackground(QTableWidgetItem().background())
         self.current_color = copy.deepcopy(self.color_allocation)
         self.display_query()
-
-    # Defines regex rules that will be used by Highlighter to format specific tokens
-    def set_up_editor(self):
-
-        # General Keywords
-        keyword_format = QTextCharFormat()
-        keyword_format.setForeground(Qt.darkMagenta)
-        keyword_format.setFontWeight(QFont.Bold)
-        pattern = r'\bselect\b|\bfrom\b|\bwhere\b|\bgroup by\b|\border by\b|\bhaving\b|\bdistinct\b|\bin\b|\bbetween\b|\blike\b|\bas\b|\bin\b|\ball\b|\bsome\b|\bexists\b|\bunion\b|\bintersect\b|\bexcept\b|\binto\b|\bjoin\b|\binner\b|\bnatural\b|\bouter\b|\bleft\b|\bright\b|\bfull\b|\bcreate\b|\binsert\b|\bset\b|\bdelete\b|\bupdate\b|\bset\b|\bvalues\b'
-        self.highlighter.add_mapping(pattern, keyword_format)
-
-        # AND and OR
-        and_format = QTextCharFormat()
-        and_format.setForeground(Qt.blue)
-        pattern = r'\band\b|\bor\b'
-        self.highlighter.add_mapping(pattern, and_format)
-
-        # Aggregate keywords
-        aggregate_format = QTextCharFormat()
-        aggregate_format.setForeground(Qt.red)
-        pattern = r'\bcount\b|\bavg\b|\bmax\b|\bmin\b|\bsum\b'
-        self.highlighter.add_mapping(pattern, aggregate_format)
 
     def goto_query_screen(self):
         widgetStack.removeWidget(widgetStack.currentWidget())
