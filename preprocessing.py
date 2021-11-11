@@ -1,4 +1,3 @@
-import re
 import psycopg2
 
 # class to handle query pre-processing:

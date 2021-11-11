@@ -117,7 +117,7 @@ font: 12pt &quot;MS Shell Dlg 2&quot;</string>
    </property>
    <item>
     <property name="text">
-     <string>Choose a sample query!</string>
+     <string>Choose a sample query! (for TPC-H)</string>
     </property>
    </item>
    <item>
