@@ -243,9 +243,9 @@ class QEPScreen(QDialog):
         tuple_list = list(self.color_allocation.items())
         if index < len(self.color_allocation):
             key_value = tuple_list[index]
-            new = {}
-            new[key_value[0]] = key_value[1]
-            self.current_color = new.copy()
+            new_color = {}
+            new_color[key_value[0]] = key_value[1]
+            self.current_color = new_color.copy()
             self.display_query()
 
     # When user stops hovering over an item in the table
@@ -262,7 +262,7 @@ class QEPScreen(QDialog):
         self.queryText.clear() #Clear previous query if any
         ending_bracket_pos=[]
         indent_amount = 0
-        tempString = ""
+        temp_string = ""
         tokens_to_newline = ["select", "where", "from", "group", "order", "set", "values", "insert", "SELECT", "WHERE", "FROM", "GROUP", "ORDER", "SET", "VALUES", "INSERT"]
         aggregation_keywords = ["count", "avg", "max", "min", "sum", "COUNT", "AVG", "MAX", "MIN", "SUM"]
 
@@ -305,10 +305,10 @@ class QEPScreen(QDialog):
             '''
             if value[1] in aggregation_keywords or value[1] == "values" or value[1] == "VALUES":
                 if value[1] == "values" or value[1] == "VALUES": # "VALUES" token should start after newline
-                    self.queryText.appendHtml(tempString)
-                    tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+                    self.queryText.appendHtml(temp_string)
+                    temp_string = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
                 else: # Aggregation function do not need newline
-                    tempString += token_to_add + " "
+                    temp_string += token_to_add + " "
                 i = 1
                 while True:
                     if self.tokenized_query[idx+i][1] == ")":
@@ -318,26 +318,26 @@ class QEPScreen(QDialog):
 
             # Once a new keyword appears, print out previous tokens and start newline
             elif value[1] in tokens_to_newline:
-                self.queryText.appendHtml(tempString)
-                tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+                self.queryText.appendHtml(temp_string)
+                temp_string = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
 
             elif value[1] == "(":
-                tempString += token_to_add + " "
+                temp_string += token_to_add + " "
                 indent_amount += 4
 
             elif value[1] == ")":
                 indent_amount -= 4
                 if idx in ending_bracket_pos : # Closing bracket is from aggregate function, don't newline
-                    tempString += token_to_add + " "
+                    temp_string += token_to_add + " "
                 else: # Closing bracket is from subplan, append after newline
-                    self.queryText.appendHtml(tempString)
-                    tempString = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
+                    self.queryText.appendHtml(temp_string)
+                    temp_string = "<font>" + indent_amount * "&nbsp;" + "</font>" + token_to_add + " "
 
             else:
-                tempString += token_to_add + " "
+                temp_string += token_to_add + " "
  
         # Print out last line of query
-        self.queryText.appendHtml(tempString)
+        self.queryText.appendHtml(temp_string)
 
     # Displays annotation in the table widget, and setting up on colors for each annotation
     def display_annotation(self):
@@ -376,6 +376,8 @@ class QEPScreen(QDialog):
                     self.table.setItem(counter, 0, item)
 
             counter += 1
+            if array_index == len(color_array):
+                array_index = 0
 
         # Set up mouse tracking and onHover functions
         self.current_color = copy.deepcopy(self.color_allocation)
