@@ -29,9 +29,12 @@ class Annotator:
         self.aggregates_arr = []
         self.sorts_arr = []
         self.subplans_arr = []
-        self.alias_dict = {}  # keep track of aliases and the table they belong to
 
-        self.annotations_dict = {}  # dictionary of {token: annotation}
+        # keep track of aliases and the table they belong to
+        self.alias_dict = {}  
+
+        # dictionary of {token: annotation}; holds the attached annotations
+        self.annotations_dict = {}  
 
         # generate the annotations - i.e. prepare annotations_dict
         self.generate_annotations(query_plan)
@@ -209,10 +212,6 @@ class Annotator:
                 found_cond = True
                 if found_cond and found_filter:
                     break
-                # self.joins_arr.append({
-                #         "name": plan["Node Type"] + " with condition: \"" + re.sub('[()]', '', plan[key]) + "\"", 
-                #         "conds": [conds[0], conds[-1]] # ignore operators
-                #     })
             if "Join Filter" == key:
                 if name == plan["Node Type"]:  # no join cond (or not yet added)
                     name += f" with join filter: \"{plan[key][1:-1]}\""  # remove enclosing brackets

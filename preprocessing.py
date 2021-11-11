@@ -27,6 +27,9 @@ class QueryProcessor:
         return query_plan 
     
     def tokenize_query(self, query):
+        '''
+        Breaks query into tokens separated by whitespace
+        '''
         clean_query = query.replace(",", " , ") # isolate commas
         clean_query = clean_query.replace("(", " ( ") # isolate lparen
         clean_query = clean_query.replace(")", " ) ") # isolate rparen
