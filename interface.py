@@ -151,7 +151,6 @@ class QueryScreen(QDialog):
                 self.errorMessage.setText("Query executed successfully, but has no annotations for viewing!")
         except Exception as e:
             # Query execution has error, display error message
-            print(e)
             error_message = self.get_annotated_query(self.text, self.processor, self.annotator)
             self.errorMessage.setStyleSheet("color: #FF0000")
             self.errorMessage.setText(str(error_message))
