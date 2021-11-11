@@ -13,7 +13,7 @@ The application can be run from project.py.
 ## Requirements
 PostgreSQL version 14, running on port 5432
 
-Python version ?
+Python version 3.8 and above
 
 Python packages required:
 1) PyQt5 (run: pip install PyQt5)
