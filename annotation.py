@@ -38,7 +38,7 @@ class Annotator:
         self.attach_annotations(tokenized_query)
         self.annotations_dict["cost"] = "Total cost of the query plan is: " + str([query_plan][0]["Total Cost"]) + "."
         self.annotations_dict["alias"] = self.alias_dict
-
+        
         # order annotations by token id
         ordered = OrderedDict()  
         token_ids = list(self.annotations_dict.keys())
@@ -113,9 +113,10 @@ class Annotator:
                         appeared_tables[token] = 1
                     else:  # table name appeared twice - find postgres-added alias
                         added_alias = f"{token}_{appeared_tables[token]}"  # postgres will add a counter to the (repeated) table name
-                        annotation = self.scans_dict[added_alias]  
-                        appeared_tables[token] += 1
-                        self.alias_dict.pop(added_alias)  # not needed for annotation
+                        if added_alias in self.scans_dict.keys():  # without check, if update and where used same table, will crash
+                            annotation = self.scans_dict[added_alias]  
+                            appeared_tables[token] += 1
+                            self.alias_dict.pop(added_alias)  # not needed for annotation
                     # attach annotations
                     annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
                     if "filter" in annotation.keys():
@@ -123,7 +124,7 @@ class Annotator:
                     elif "cond" in annotation.keys():
                         annotation_text += f" The index condition \"{annotation['cond']}\" is applied."
                     self.annotations_dict[i] = annotation_text
-
+                    
                     if table_counter == 1: # If 2 tables in the from clause, annotate it with a join
                         self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
                     elif table_counter > 1: # If more than 2 tables in the from clause, annotate with a join for each
