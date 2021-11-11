@@ -1,5 +1,5 @@
 # sql-annotator
-A program that takes in a SQL query and returns annotations for the query in natural language using highlighting.
+A program that takes in a SQL query and returns annotations for the query in natural language through highlighting.
 
 Please note that the PostgreSQL database that you would like to run queries on must have been initialised prior to running this application.
 
@@ -7,6 +7,8 @@ Please note that the PostgreSQL database that you would like to run queries on m
 - preprocessing.py (handles query pre-processing for annotation)
 - annotation.py (handles annotation using the query's QEP)
 - interface.py (user-friendly interface for displaying annotations)
+
+The screens defined in interface.py also load their design and layout from their respective .ui files.
 
 The application can be run from project.py. 
 
