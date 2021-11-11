@@ -109,7 +109,9 @@ class Annotator:
                     if clause_index in self.annotations_dict.keys():
                         self.annotations_dict[clause_index] = "This join is carried out with a " + self.annotations_dict[clause_index] + "."
 
-                if token in self.scans_dict.keys(): # attach scans to the index of their alias names within FROM clause
+                # attach scans to the index of their alias names within FROM clause
+                # also need to check if the next token to see if this table has an alias
+                if token in self.scans_dict.keys() and tokenized_query[i+1] not in self.scans_dict.keys(): 
                     # need to check if we are attaching annotations to repeated table name without alias
                     if token not in appeared_tables.keys():
                         annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
@@ -120,14 +122,14 @@ class Annotator:
                             annotation = self.scans_dict[added_alias]  
                             appeared_tables[token] += 1
                             self.alias_dict.pop(added_alias)  # not needed for annotation
-                    # attach annotations
+                    # attach scan annotations
                     annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
                     if "filter" in annotation.keys():
                         annotation_text += f" The filter \"{annotation['filter']}\" is applied."
                     elif "cond" in annotation.keys():
                         annotation_text += f" The index condition \"{annotation['cond']}\" is applied."
                     self.annotations_dict[i] = annotation_text
-                    
+                    # attach join annotations
                     if table_counter == 1: # If 2 tables in the from clause, annotate it with a join
                         self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
                     elif table_counter > 1: # If more than 2 tables in the from clause, annotate with a join for each
@@ -160,7 +162,8 @@ class Annotator:
                         raise Exception("Found GROUP/ORDER without BY")
             
             elif current_clause == "UPDATE" or current_clause == "DELETE":  # for these, just attach scans, if any
-                if token in self.scans_dict.keys():
+                # also need to check if the next token to see if this table has an alias
+                if token in self.scans_dict.keys() and tokenized_query[i+1] not in self.scans_dict.keys():
                     # need to check if we are attaching annotations to repeated table name without alias
                     if token not in appeared_tables.keys():
                         annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
