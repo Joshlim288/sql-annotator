@@ -342,7 +342,7 @@ class QEPScreen(QDialog):
     # Displays annotation in the table widget, and setting up on colors for each annotation
     def display_annotation(self):
 
-        color_array= ["#62EC0A", "#BD9FDF", "#FFFF00", "#ED6A13" ,"#59F0FF", "#12EC83", "#EDAF13", "#EC0A2F", "#DE9EA3", "#423FDA", "#DE9EC1"]
+        color_array= ["#63FF00", "#BD9FDF", "#FFFF00", "#E3630E" ,"#59F0FF", "#12EC83", "#FAC541", "#FC4260", "#E08D94", "#4C49D6", "#EB33FF"]
         counter = 0
         array_index = 0
 
