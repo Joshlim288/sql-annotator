@@ -110,26 +110,27 @@ class Annotator:
                         self.annotations_dict[clause_index] = "This join is carried out with a " + self.annotations_dict[clause_index] + "."
 
                 # attach scans to the index of their alias names within FROM clause
-                if token in self.scans_dict.keys():                         
+                if token in self.scans_dict.keys():
+                    # need to check the next token to see if this table has an alias
+                    if i+1 == len(tokenized_query) or tokenized_query[i+1] not in self.scans_dict.keys():                           
                     # need to check if we are attaching annotations to repeated table name without alias
-                    if token not in appeared_tables.keys():
-                        annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
-                        appeared_tables[token] = 1
-                    else:  # table name appeared twice - find postgres-added alias
-                        added_alias = f"{token}_{appeared_tables[token]}"  # postgres will add a counter to the (repeated) table name
-                        if added_alias in self.scans_dict.keys():  # without check, if update and where used same table, will crash
-                            annotation = self.scans_dict[added_alias]  
-                            appeared_tables[token] += 1
-                            self.alias_dict.pop(added_alias)  # not needed for annotation
-                    # attach scan annotations
-                    annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
-                    if "filter" in annotation.keys():
-                        annotation_text += f" The filter \"{annotation['filter']}\" is applied."
-                    elif "cond" in annotation.keys():
-                        annotation_text += f" The index condition \"{annotation['cond']}\" is applied."
-                    self.annotations_dict[i] = annotation_text
-                    # attach join annotations
-                    if i+1 < len(tokenized_query) and tokenized_query[i+1] not in self.scans_dict.keys(): # need to check the next token to see if this table has an alias
+                        if token not in appeared_tables.keys():
+                            annotation = self.scans_dict[token] # annotate current token with it's related scan annotation
+                            appeared_tables[token] = 1
+                        else:  # table name appeared twice - find postgres-added alias
+                            added_alias = f"{token}_{appeared_tables[token]}"  # postgres will add a counter to the (repeated) table name
+                            if added_alias in self.scans_dict.keys():  # without check, if update and where used same table, will crash
+                                annotation = self.scans_dict[added_alias]  
+                                appeared_tables[token] += 1
+                                self.alias_dict.pop(added_alias)  # not needed for annotation
+                        # attach scan annotations
+                        annotation_text = f"The table \"{annotation['name']}\"{annotation['alias']} is read using {annotation['scan_type']}."
+                        if "filter" in annotation.keys():
+                            annotation_text += f" The filter \"{annotation['filter']}\" is applied."
+                        elif "cond" in annotation.keys():
+                            annotation_text += f" The index condition \"{annotation['cond']}\" is applied."
+                        self.annotations_dict[i] = annotation_text
+                        # attach join annotations
                         if table_counter == 1: # If 2 tables in the from clause, annotate it with a join
                             self.annotations_dict[clause_index] = self.joins_arr.pop(0)["name"]
                         elif table_counter > 1: # If more than 2 tables in the from clause, annotate with a join for each
